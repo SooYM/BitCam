@@ -1,5 +1,5 @@
 // sw.js
-const CACHE_NAME = 'vicepoly-cache-v11';
+const CACHE_NAME = 'vicepoly-cache-v12';
 const ASSETS = [
   './',
   './index.html',
@@ -9,7 +9,7 @@ const ASSETS = [
   './icon-192.png',
   './icon-512.png',
   './manifest.json',
-  'https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js'
+  'https://cdn.jsdelivr.net/npm/heic-to@1.5.2/dist/iife/heic-to.js'
 ];
 
 // Cache all assets during service worker installation

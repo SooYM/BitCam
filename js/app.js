@@ -197,10 +197,20 @@ const App = {
     }
   },
 
-  loadImageFromFile: function(file) {
-    const isHEIC = file.name.toLowerCase().endsWith('.heic') || file.type === 'image/heic' || file.type === 'image/heif';
+  loadImageFromFile: async function(file) {
+    let isHEIC = file.name.toLowerCase().endsWith('.heic') || file.type === 'image/heic' || file.type === 'image/heif';
 
-    if (isHEIC) {
+    // Verify format using binary signatures if HeicTo is loaded
+    if (typeof HeicTo !== 'undefined' && typeof HeicTo.isHeic === 'function') {
+      try {
+        const check = await HeicTo.isHeic(file);
+        if (check) isHEIC = true;
+      } catch (e) {
+        console.warn("HeicTo.isHeic header check skipped:", e);
+      }
+    }
+
+    if (isHEIC && typeof HeicTo !== 'undefined') {
       this.showLoading(true);
       // Update loader text to notify user of HEIC conversion
       const loadingTextEl = document.querySelector('.loading-text');
@@ -209,10 +219,10 @@ const App = {
         loadingTextEl.textContent = 'CONVERTING HEIC PHOTO...';
       }
 
-      // Convert HEIC Blob to JPEG Blob using heic2any
-      heic2any({
+      // Convert HEIC Blob to JPEG Blob using modern HeicTo
+      HeicTo({
         blob: file,
-        toType: 'image/jpeg',
+        type: 'image/jpeg',
         quality: 0.85
       })
       .then((convertedBlob) => {
