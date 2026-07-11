@@ -69,7 +69,7 @@ The project has zero build chains, package managers, or bundlers:
 
 ## 🚀 Getting Started
 
-Use this GitHub Pages link: 👉 **[https://SooYM.github.io/VicePoly/](https://SooYM.github.io/VicePoly/)**
+Use this GitHub Pages link: 👉 **[https://SooYM.github.io/VicePoly/](https://SooYM.github.io/BitCam/)**
 
 Once loaded on your mobile phone (iOS Safari or Android Chrome), tap **"Add to Home Screen"** to run it full-screen as a standalone Progressive Web App (PWA).
 
