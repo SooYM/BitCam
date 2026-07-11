@@ -1,9 +1,11 @@
 // sw.js
-const CACHE_NAME = 'vicepoly-cache-v12';
+const CACHE_NAME = 'vicepoly-cache-v13';
 const ASSETS = [
   './',
   './index.html',
   './css/style.css',
+  './js/sobel.js',
+  './js/delaunay.js',
   './js/filters.js',
   './js/app.js',
   './icon-192.png',

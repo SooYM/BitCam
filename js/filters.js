@@ -1,162 +1,137 @@
 // js/filters.js
 
 /**
- * 6th-Gen Console (PlayStation 2) Graphics Synthesizer Simulation Module
+ * Silhouette-Aligned 3D Flat-Shaded Vector Mesh Rendering Module
  */
 const Filters = {
   /**
-   * Main 6th-Gen Console (PS2) Graphics Simulation Pipeline
+   * Main Triangulation & Shading Pipeline
+   * Converts a 2D photo into a flat-shaded 3D-mesh style vector art render.
    * @param {HTMLImageElement} img - The source image.
    * @param {HTMLCanvasElement} destCanvas - The display canvas to render onto.
    */
   apply6thGenPipeline: function(img, destCanvas) {
-    console.log("[VicePoly Engine] Starting graphics simulation pipeline...");
+    console.log("[VicePoly Engine] Starting flat-shaded 3D mesh rendering...");
     
     const destCtx = destCanvas.getContext('2d');
     const displayW = destCanvas.width;
     const displayH = destCanvas.height;
 
-    console.log(`[VicePoly Engine] Target display dimensions: ${displayW}x${displayH}`);
+    // 1. Draw original image onto offscreen canvas to extract colors and edge points
+    const offscreen = document.createElement('canvas');
+    offscreen.width = displayW;
+    offscreen.height = displayH;
+    const offscreenCtx = offscreen.getContext('2d');
+    offscreenCtx.drawImage(img, 0, 0, displayW, displayH);
 
-    // --- STAGE 2.1: Spatial Quantization (Nearest Downscaling) ---
-    // Downscale to a higher VGA-equivalent resolution (640px max dimension)
-    // to emulate a high-poly late-era console look while preserving aspect ratio.
-    const targetMaxDim = 640; 
-    let lowResW, lowResH;
-    if (displayW > displayH) {
-      lowResW = targetMaxDim;
-      lowResH = Math.max(1, Math.round((displayH * targetMaxDim) / displayW));
-    } else {
-      lowResH = targetMaxDim;
-      lowResW = Math.max(1, Math.round((displayW * targetMaxDim) / displayH));
-    }
+    const imgData = offscreenCtx.getImageData(0, 0, displayW, displayH);
+    const pixels = imgData.data;
 
-    console.log(`[VicePoly Engine] Downscale buffer resolution: ${lowResW}x${lowResH}`);
+    // 2. Extract structural outlines and grid points
+    const points = Sobel.extractPoints(imgData);
+    console.log(`[VicePoly Engine] Extracted ${points.length} structural vertices.`);
 
-    const lowResCanvas = document.createElement('canvas');
-    lowResCanvas.width = lowResW;
-    lowResCanvas.height = lowResH;
-    const lowResCtx = lowResCanvas.getContext('2d');
+    // 3. Triangulate points into a continuous polygonal mesh
+    const triangles = Delaunay.triangulate(points);
+    console.log(`[VicePoly Engine] Generated ${triangles.length} polygon faces.`);
 
-    // Force strict Nearest-Neighbor downscaling
-    lowResCtx.imageSmoothingEnabled = false;
-    lowResCtx.msImageSmoothingEnabled = false;
-    lowResCtx.webkitImageSmoothingEnabled = false;
+    // 4. Clear destination canvas
+    destCtx.clearRect(0, 0, displayW, displayH);
 
-    // Draw source image scaled to low-res
-    lowResCtx.drawImage(img, 0, 0, lowResW, lowResH);
+    // Helper to get color at a coordinate
+    const getColor = (x, y) => {
+      const cx = Math.max(0, Math.min(displayW - 1, Math.round(x)));
+      const cy = Math.max(0, Math.min(displayH - 1, Math.round(y)));
+      const idx = (cy * displayW + cx) * 4;
+      return { r: pixels[idx], g: pixels[idx + 1], b: pixels[idx + 2] };
+    };
 
-    // Extract low-res pixel matrix
-    const imgData = lowResCtx.getImageData(0, 0, lowResW, lowResH);
-    const data = imgData.data;
+    // Helper to get luminance (for pseudo-3D height map depth Z)
+    const getLum = (p) => {
+      const cx = Math.max(0, Math.min(displayW - 1, Math.round(p.x)));
+      const cy = Math.max(0, Math.min(displayH - 1, Math.round(p.y)));
+      const idx = (cy * displayW + cx) * 4;
+      return 0.299 * pixels[idx] + 0.587 * pixels[idx + 1] + 0.114 * pixels[idx + 2];
+    };
 
-    // --- STAGE 2.2: Structural Edge Hardening (Unsharp Mask) ---
-    const originalPixels = new Uint8ClampedArray(data);
-    const blurredPixels = this.boxBlur3x3(originalPixels, lowResW, lowResH);
-    const sharpenAmount = 1.8; 
+    // Directional light vector from top-left (illuminates top surfaces)
+    const lx = -0.485;
+    const ly = -0.485;
+    const lz = 0.728;
+    const zScale = 0.55; // Steep height map scale for high-contrast shading
 
-    for (let i = 0; i < data.length; i += 4) {
-      for (let c = 0; c < 3; c++) { // R, G, B
-        const origVal = originalPixels[i + c];
-        const blurVal = blurredPixels[i + c];
-        const diff = origVal - blurVal;
-        const sharpVal = origVal + sharpenAmount * diff;
-        data[i + c] = Math.min(255, Math.max(0, Math.round(sharpVal)));
+    // 5. Draw flat-shaded polygons loop
+    for (const t of triangles) {
+      // A. Calculate centroid (center point of the triangle)
+      const cx1 = (t.p1.x + t.p2.x + t.p3.x) / 3;
+      const cy1 = (t.p1.y + t.p2.y + t.p3.y) / 3;
+
+      // B. Sample colors at centroid and halfway towards each vertex for clean, averaged flat fills
+      const cCentroid = getColor(cx1, cy1);
+      const c1 = getColor((cx1 + t.p1.x) / 2, (cy1 + t.p1.y) / 2);
+      const c2 = getColor((cx1 + t.p2.x) / 2, (cy1 + t.p2.y) / 2);
+      const c3 = getColor((cx1 + t.p3.x) / 2, (cy1 + t.p3.y) / 2);
+
+      const r = Math.round((cCentroid.r + c1.r + c2.r + c3.r) / 4);
+      const g = Math.round((cCentroid.g + c1.g + c2.g + c3.g) / 4);
+      const b = Math.round((cCentroid.b + c1.b + c2.b + c3.b) / 4);
+
+      // C. Calculate pseudo-3D normals and Lambertian diffuse shading
+      const l1 = getLum(t.p1);
+      const l2 = getLum(t.p2);
+      const l3 = getLum(t.p3);
+
+      const z1 = l1 * zScale;
+      const z2 = l2 * zScale;
+      const z3 = l3 * zScale;
+
+      // Triangle plane vectors
+      const ux = t.p2.x - t.p1.x;
+      const buy = t.p2.y - t.p1.y;
+      const uz = z2 - z1;
+
+      const vx = t.p3.x - t.p1.x;
+      const vy = t.p3.y - t.p1.y;
+      const vz = z3 - z1;
+
+      // Plane normal vector (cross product)
+      let nx = buy * vz - uz * vy;
+      let ny = uz * vx - ux * vz;
+      let nz = ux * vy - buy * vx;
+
+      let factor = 1.0;
+      const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
+      if (len > 0.0001) {
+        nx /= len;
+        ny /= len;
+        nz /= len;
+
+        // Shading dot product
+        const dot = nx * lx + ny * ly + nz * lz;
+        factor = 1.0 + dot * 0.55; // 55% light intensity adjustment
+        factor = Math.min(1.45, Math.max(0.5, factor)); // Clamp shading range
       }
+
+      const finalR = Math.min(255, Math.max(0, Math.round(r * factor)));
+      const finalG = Math.min(255, Math.max(0, Math.round(g * factor)));
+      const finalB = Math.min(255, Math.max(0, Math.round(b * factor)));
+
+      // D. Draw solid filled polygon
+      destCtx.beginPath();
+      destCtx.moveTo(t.p1.x, t.p1.y);
+      destCtx.lineTo(t.p2.x, t.p2.y);
+      destCtx.lineTo(t.p3.x, t.p3.y);
+      destCtx.closePath();
+
+      destCtx.fillStyle = `rgb(${finalR}, ${finalG}, ${finalB})`;
+      destCtx.fill();
+
+      // Stroke boundaries with matching color to completely eliminate sub-pixel gaps (seams)
+      destCtx.strokeStyle = destCtx.fillStyle;
+      destCtx.lineWidth = 0.6;
+      destCtx.stroke();
     }
-
-    // --- STAGE 2.3: Textural Mipmap Simulation (Selective Blurring) ---
-    const originalPixels2 = new Uint8ClampedArray(data);
-    const blurredPixels2 = this.boxBlur3x3(originalPixels2, lowResW, lowResH);
-    const cx = lowResW / 2;
-    const cy = lowResH / 2;
-    const maxDist = Math.sqrt(cx * cx + cy * cy) * 0.75; 
-
-    for (let y = 0; y < lowResH; y++) {
-      for (let x = 0; x < lowResW; x++) {
-        const i = (y * lowResW + x) * 4;
-        
-        const dx = x - cx;
-        const dy = y - cy;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        const blurFactor = Math.min(1.0, dist / maxDist); 
-
-        for (let c = 0; c < 3; c++) {
-          const orig = originalPixels2[i + c];
-          const blur = blurredPixels2[i + c];
-          data[i + c] = Math.round(orig * (1 - blurFactor) + blur * blurFactor);
-        }
-      }
-    }
-
-    // --- STAGE 2.4 & 2.5: 16-Bit Color Space (RGB5A1) & Bayer 4x4 Dithering ---
-    const bayerMatrix = [
-      [ 0,  8,  2, 10],
-      [12,  4, 14,  6],
-      [ 3, 11,  1,  9],
-      [15,  7, 13,  5]
-    ];
-    const stepSize = 255 / 31; // ~8.226
-
-    for (let y = 0; y < lowResH; y++) {
-      for (let x = 0; x < lowResW; x++) {
-        const i = (y * lowResW + x) * 4;
-        const matrixVal = bayerMatrix[y % 4][x % 4] / 16 - 0.5;
-        const ditherOffset = matrixVal * stepSize * 1.15;
-
-        for (let c = 0; c < 3; c++) {
-          const rawVal = data[i + c] + ditherOffset;
-          const clampedVal = Math.min(255, Math.max(0, rawVal));
-          data[i + c] = Math.round(Math.round(clampedVal / stepSize) * stepSize);
-        }
-      }
-    }
-
-    // Put image data back to the low-res canvas
-    lowResCtx.putImageData(imgData, 0, 0);
-
-    // --- STAGE 2.6: CRT Analog Output & Upscaling ---
-    // (VHS scanlines, composite chroma bleeding, and film noise are removed as requested)
-    destCtx.imageSmoothingEnabled = false;
-    destCtx.msImageSmoothingEnabled = false;
-    destCtx.webkitImageSmoothingEnabled = false;
-    destCtx.drawImage(lowResCanvas, 0, 0, displayW, displayH);
     
-    console.log("[VicePoly Engine] Graphics simulation complete.");
-  },
-
-  /**
-   * Helper to perform a 3x3 box blur (1 pixel radius)
-   */
-  boxBlur3x3: function(srcData, w, h) {
-    const dest = new Uint8ClampedArray(srcData.length);
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        const i = (y * w + x) * 4;
-        let rSum = 0, gSum = 0, bSum = 0, count = 0;
-        
-        for (let ky = -1; ky <= 1; ky++) {
-          const ny = y + ky;
-          if (ny < 0 || ny >= h) continue;
-          
-          for (let kx = -1; kx <= 1; kx++) {
-            const nx = x + kx;
-            if (nx < 0 || nx >= w) continue;
-            
-            const ni = (ny * w + nx) * 4;
-            rSum += srcData[ni];
-            gSum += srcData[ni + 1];
-            bSum += srcData[ni + 2];
-            count++;
-          }
-        }
-        
-        dest[i] = Math.round(rSum / count);
-        dest[i + 1] = Math.round(gSum / count);
-        dest[i + 2] = Math.round(bSum / count);
-        dest[i + 3] = srcData[i + 3]; 
-      }
-    }
-    return dest;
+    console.log("[VicePoly Engine] Flat-shaded 3D mesh rendering complete.");
   }
 };
