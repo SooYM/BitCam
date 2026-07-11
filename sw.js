@@ -1,5 +1,5 @@
 // sw.js
-const CACHE_NAME = 'vicepoly-cache-v14';
+const CACHE_NAME = 'vicepoly-cache-v15';
 const ASSETS = [
   './',
   './index.html',

@@ -19,7 +19,8 @@ const Sobel = {
     const originalHeight = imageData.height;
 
     // 1. Create a downscaled temporary canvas to eliminate high-frequency details (noise, textures, pipes)
-    const scaleWidth = 140; // Super low resolution for point extraction
+    // Using 110px width to ensure extremely low polygon counts and highly simplified outlines.
+    const scaleWidth = 110; 
     const scaleHeight = Math.round((originalHeight * scaleWidth) / originalWidth);
 
     const tempCanvas = document.createElement('canvas');
@@ -69,10 +70,10 @@ const Sobel = {
     const scalePoints = [];
 
     // Spacing constraints for the low-res image:
-    // - Along outlines: place vertices every 12 pixels.
-    // - In flat regions: place vertices sparsely every 32 pixels.
-    const edgeSpacing = 12;
-    const flatGridSize = 32;
+    // - Along outlines: place vertices every 10 pixels on the scaled canvas.
+    // - In flat regions: place vertices sparsely every 28 pixels on the scaled canvas.
+    const edgeSpacing = 10;
+    const flatGridSize = 28;
     const silhouetteThreshold = 35; // Capture dominant outlines
 
     // Initialize spatial grid for O(1) distance lookups to prevent coordinates from clustering
@@ -160,7 +161,7 @@ const Sobel = {
     points.push({ x: 0, y: originalHeight - 1 });
     points.push({ x: originalWidth - 1, y: originalHeight - 1 });
 
-    const borderSpacing = 120; // High spacing for large border shapes
+    const borderSpacing = 140; // High spacing for large border shapes
     for (let x = borderSpacing; x < originalWidth - 1; x += borderSpacing) {
       points.push({ x: x, y: 0 });
       points.push({ x: x, y: originalHeight - 1 });

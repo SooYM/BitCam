@@ -2,6 +2,7 @@
 
 /**
  * Silhouette-Aligned 3D Flat-Shaded Vector Mesh Rendering Module
+ * Emulates PS2 rendering constraints: low-poly models, flat textures, and warm Y2K grading.
  */
 const Filters = {
   /**
@@ -54,11 +55,59 @@ const Filters = {
       return 0.299 * pixels[idx] + 0.587 * pixels[idx + 1] + 0.114 * pixels[idx + 2];
     };
 
+    /**
+     * Applies Vice City / Y2K warm post-processing color grading:
+     * - Contrast +10%
+     * - Saturation -20%
+     * - Warm highlights, Cool shadows
+     */
+    const applyY2KColorGrading = (r, g, b) => {
+      // A. Contrast adjustment (+10%)
+      let red = (r - 128) * 1.1 + 128;
+      let green = (g - 128) * 1.1 + 128;
+      let blue = (b - 128) * 1.1 + 128;
+
+      // B. Saturation adjustment (-20%)
+      // Convert RGB to YUV, scale chroma, and convert back
+      const y = 0.299 * red + 0.587 * green + 0.114 * blue;
+      let u = (-0.168736 * red - 0.331264 * green + 0.5 * blue) * 0.8;
+      let v = (0.5 * red - 0.418688 * green - 0.081312 * blue) * 0.8;
+
+      // C. Warm Highlights & Cool Shadows
+      const highlightThresh = 175;
+      const shadowThresh = 80;
+
+      if (y > highlightThresh) {
+        // Shift highlights toward warm sunset colors (adds orange/yellow, dims blue)
+        const intensity = ((y - highlightThresh) / (255 - highlightThresh)) * 14;
+        red += intensity;
+        green += intensity * 0.4;
+        blue -= intensity * 0.3;
+      } else if (y < shadowThresh) {
+        // Shift shadows toward cool shadows (adds blue/violet, dims red)
+        const intensity = ((shadowThresh - y) / shadowThresh) * 10;
+        blue += intensity;
+        green += intensity * 0.2;
+        red -= intensity * 0.4;
+      }
+
+      // Convert back to RGB
+      red = y + 1.402 * v;
+      green = y - 0.344136 * u - 0.714136 * v;
+      blue = y + 1.772 * u;
+
+      return {
+        r: Math.min(255, Math.max(0, Math.round(red))),
+        g: Math.min(255, Math.max(0, Math.round(green))),
+        b: Math.min(255, Math.max(0, Math.round(blue)))
+      };
+    };
+
     // Directional light vector from top-left (illuminates top surfaces)
     const lx = -0.485;
     const ly = -0.485;
     const lz = 0.728;
-    const zScale = 0.55; // Steep height map scale for high-contrast shading
+    const zScale = 0.52; // Height map scale for flat surface rendering
 
     // 5. Draw flat-shaded polygons loop
     for (const t of triangles) {
@@ -72,9 +121,12 @@ const Filters = {
       const c2 = getColor((cx1 + t.p2.x) / 2, (cy1 + t.p2.y) / 2);
       const c3 = getColor((cx1 + t.p3.x) / 2, (cy1 + t.p3.y) / 2);
 
-      const r = Math.round((cCentroid.r + c1.r + c2.r + c3.r) / 4);
-      const g = Math.round((cCentroid.g + c1.g + c2.g + c3.g) / 4);
-      const b = Math.round((cCentroid.b + c1.b + c2.b + c3.b) / 4);
+      const rawR = Math.round((cCentroid.r + c1.r + c2.r + c3.r) / 4);
+      const rawG = Math.round((cCentroid.g + c1.g + c2.g + c3.g) / 4);
+      const rawB = Math.round((cCentroid.b + c1.b + c2.b + c3.b) / 4);
+
+      // Apply Y2K Color Grading (Contrast, Saturation, Warm highlights)
+      const graded = applyY2KColorGrading(rawR, rawG, rawB);
 
       // C. Calculate pseudo-3D normals and Lambertian diffuse shading
       const l1 = getLum(t.p1);
@@ -109,14 +161,20 @@ const Filters = {
         // Shading dot product
         const dot = nx * lx + ny * ly + nz * lz;
         factor = 1.0 + dot * 0.55; // 55% light intensity adjustment
-        factor = Math.min(1.45, Math.max(0.5, factor)); // Clamp shading range
+        factor = Math.min(1.45, Math.max(0.55, factor)); // Clamp shading range
+
+        // D. Simulate baked ambient occlusion ground shadows (under carriage, floor, wheels)
+        // Normals pointing downward (negative ny) receive extra shadow attenuation
+        if (ny < -0.22) {
+          factor *= 0.72; // Attenuate downward surfaces to create dark under-car shadows
+        }
       }
 
-      const finalR = Math.min(255, Math.max(0, Math.round(r * factor)));
-      const finalG = Math.min(255, Math.max(0, Math.round(g * factor)));
-      const finalB = Math.min(255, Math.max(0, Math.round(b * factor)));
+      const finalR = Math.min(255, Math.max(0, Math.round(graded.r * factor)));
+      const finalG = Math.min(255, Math.max(0, Math.round(graded.g * factor)));
+      const finalB = Math.min(255, Math.max(0, Math.round(graded.b * factor)));
 
-      // D. Draw solid filled polygon
+      // E. Draw solid filled polygon
       destCtx.beginPath();
       destCtx.moveTo(t.p1.x, t.p1.y);
       destCtx.lineTo(t.p2.x, t.p2.y);
