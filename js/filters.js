@@ -35,6 +35,16 @@ const Filters = {
   },
 
   /**
+   * Quantizes RGB values to 5-6-5 bit (16-bit) High Color depth (65536 colors total).
+   */
+  apply16BitQuantization: function(r, g, b) {
+    const red = Math.round(((r >> 3) * 255) / 31);
+    const green = Math.round(((g >> 2) * 255) / 63);
+    const blue = Math.round(((b >> 3) * 255) / 31);
+    return { r: red, g: green, b: blue };
+  },
+
+  /**
    * Procedurally generates authentic 16x16 pixel texture sheets for voxel blocks.
    * This runs once on load to populate the texture dictionary with zero network overhead.
    */
@@ -231,8 +241,9 @@ const Filters = {
         avgB = Math.min(255, Math.max(0, Math.round(avgB * gammaFactor)));
 
         if (preset === 'flat-pixel') {
-          // FLAT PIXEL: Standard color-pixelation block (flat render)
-          destCtx.fillStyle = `rgb(${avgR}, ${avgG}, ${avgB})`;
+          // FLAT PIXEL: 16-bit High Color quantized pixel block
+          const qColor = this.apply16BitQuantization(avgR, avgG, avgB);
+          destCtx.fillStyle = `rgb(${qColor.r}, ${qColor.g}, ${qColor.b})`;
           destCtx.fillRect(x, y, cellW, cellH);
         } else {
           // VOXEL BLOCKS: Find closest block by Euclidean distance in color space

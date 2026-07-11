@@ -44,6 +44,7 @@ const App = {
     // Style Selector HUD Elements
     el.styleSelector = document.getElementById('style-selector');
     el.styleBtns = document.querySelectorAll('.btn-style');
+    el.qualityLabel = document.querySelector('.quality-label');
 
     // PWA elements
     el.pwaPrompt = document.getElementById('pwa-prompt');
@@ -75,7 +76,14 @@ const App = {
       btn.addEventListener('click', () => {
         el.styleBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        this.state.activePreset = btn.getAttribute('data-style');
+        const style = btn.getAttribute('data-style');
+        this.state.activePreset = style;
+
+        // Update LCD HUD quality label
+        if (el.qualityLabel) {
+          el.qualityLabel.textContent = style === 'survival' ? 'HQ 8b' : 'HQ 16b';
+        }
+
         this.processImage();
       });
     });
@@ -192,6 +200,16 @@ const App = {
       this.elements.screenDisplay.classList.remove('camera-active');
     }
     
+    // Reset style selection to default (16 BIT)
+    this.state.activePreset = 'flat-pixel';
+    if (this.elements.qualityLabel) {
+      this.elements.qualityLabel.textContent = 'HQ 16b';
+    }
+    this.elements.styleBtns.forEach((btn, idx) => {
+      if (idx === 0) btn.classList.add('active');
+      else btn.classList.remove('active');
+    });
+
     // Clear canvas
     const canvas = this.elements.outputCanvas;
     const ctx = canvas.getContext('2d');
@@ -355,7 +373,7 @@ const App = {
         if (this.state.activePreset === 'survival') {
           this.elements.outputImage.style.filter = 'contrast(1.15) saturate(1.05)';
         } else {
-          this.elements.outputImage.style.filter = 'contrast(1.1) saturate(0.95)';
+          this.elements.outputImage.style.filter = 'contrast(1.12) saturate(0.98)';
         }
       }
 

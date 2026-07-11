@@ -18,8 +18,8 @@ Rather than a modern flat interface, the app is styled as an interactive physica
 - **Device Casing**: Styled with brushed-metal chassis gradients, inner beveled highlights, and a translucent atomic-cyan grip strip.
 - **Physical Utility Keys**: 3D beveled metallic buttons for **LOAD**, **REFRESH**, and **SAVE** that displace vertically when clicked.
 - **Glowing LED Indicators**: Tactile lights indicating device power and calculation state. The "READY" LED glows bright green when the pixel art has compiled.
-- **Viewfinder HUD Overlays**: Monospaced green LCD indicators printing the battery capacity `[▰▰▰] 100%`, active camera mode `● ACTIVE`, a retro calendar timestamp, and photo quality (`HQ 24b`).
-- **Style Selector HUD**: A clean, bottom-centered glassmorphism menu toggle that swaps rendering modes between **24 BIT** and **8 BIT**.
+- **Viewfinder HUD Overlays**: Monospaced green LCD indicators printing the battery capacity `[▰▰▰] 100%`, active camera mode `● ACTIVE`, a retro calendar timestamp, and photo quality (`HQ 16b`).
+- **Style Selector HUD**: A clean, bottom-centered glassmorphism menu toggle that swaps rendering modes between **16 BIT** and **8 BIT**.
 
 ---
 
@@ -33,9 +33,9 @@ CraftCam processes the loaded image in real-time through a client-side voxelizat
 
 ### 2. Dual Pixelation Styles
 
-#### 👾 24 BIT Mode (Smooth Flat Pixel Art)
+#### 👾 16 BIT Mode (Smooth Flat Pixel Art)
 *   Standard color-pixelation block rendering.
-*   Draws clean, solid flat-color blocks for a smooth, high-fidelity 24-bit retro pixel art look.
+*   Clamps the colors into a 5-6-5 bit (16-bit) High Color depth, yielding exactly 65,536 colors for a retro Windows 95/98 PC gaming look.
 
 #### 🧱 8 BIT Mode (Procedural Voxel Block Art)
 *   **Procedural Block Texture Compiler**: Generates authentic 16x16 pixel textures dynamically on startup with zero network dependencies (includes *Stone, Grass, Dirt, Leaves, Water, Sand, Wood, and Obsidian*).
