@@ -415,7 +415,7 @@ const App = {
     if (!this.state.originalImage) return;
 
     const link = document.createElement('a');
-    link.download = `3d_render_${Date.now()}.png`;
+    link.download = `vicepoly_render_${Date.now()}.png`;
     link.href = this.elements.outputCanvas.toDataURL('image/png');
     document.body.appendChild(link);
     link.click();

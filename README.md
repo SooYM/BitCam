@@ -1,7 +1,9 @@
-# Vance 3D-CAM 📸
+# VicePoly 📸
 > **A Skeuomorphic 2000s Cyber-Camera & Retro 3D Graphics Generator**
 
-Vance 3D-CAM is a zero-configuration, single-page web application that converts photos into the classic 3D graphics style of early 2000s consoles (reminiscent of low-poly rendering from the PlayStation 1 and PlayStation 2 era). 
+VicePoly is a zero-configuration, single-page web application that converts photos into the classic 3D graphics style of early 2000s consoles (reminiscent of low-poly rendering from the PlayStation 1 and PlayStation 2 era).
+
+*Inspired by the iconic, low-poly, warm-sunset 3D graphics style of GTA Vice City.*
 
 The entire application runs **100% in the frontend** using HTML5 Canvas, Vanilla CSS, and JavaScript. It is heavily optimized for mobile devices and ready to deploy directly to GitHub Pages.
 
@@ -25,10 +27,10 @@ Rather than a modern flat interface, the app is styled as an interactive physica
 
 ## ⚙️ How the 3D Rendering Engine Works
 
-Vance 3D-CAM departs from generic 2D Delaunay filters by replicating the early 3D rendering pipeline constraints:
+VicePoly departs from generic 2D Delaunay filters by replicating the early 3D rendering pipeline constraints:
 
 ### 1. Silhouette Contour Alignment (Anti-Webbing)
-Standard low-poly filters tile the entire image space, stretching triangles across object silhouettes (creating ugly webbing between a subject's head and the sky). Vance 3D-CAM solves this by:
+Standard low-poly filters tile the entire image space, stretching triangles across object silhouettes (creating ugly webbing between a subject's head and the sky). VicePoly solves this by:
 - Tracing major object boundaries (highest 5% gradients using Sobel operators).
 - Placing coordinates at a high density (every 10px) strictly along these outlines.
 - Placing points in uniform/flat regions (sky, roads) very sparsely (every 50px).
