@@ -10,9 +10,13 @@ const Filters = {
    * @param {HTMLCanvasElement} destCanvas - The display canvas to render onto.
    */
   apply6thGenPipeline: function(img, destCanvas) {
+    console.log("[VicePoly Engine] Starting graphics simulation pipeline...");
+    
     const destCtx = destCanvas.getContext('2d');
     const displayW = destCanvas.width;
     const displayH = destCanvas.height;
+
+    console.log(`[VicePoly Engine] Target display dimensions: ${displayW}x${displayH}`);
 
     // --- STAGE 2.1: Spatial Quantization (Nearest Downscaling) ---
     // Downscale to NTSC standard resolution (320x240)
@@ -36,9 +40,14 @@ const Filters = {
     const imgData = lowResCtx.getImageData(0, 0, lowResW, lowResH);
     const data = imgData.data;
 
+    // Sanity check low-res pixels
+    let lowResSum = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      lowResSum += data[i] + data[i+1] + data[i+2];
+    }
+    console.log(`[VicePoly Engine] Stage 2.1 Downscale - Pixel color sum: ${lowResSum}`);
+
     // --- STAGE 2.2: Structural Edge Hardening (Unsharp Mask) ---
-    // Formula: Original + Amount * (Original - Blurred)
-    // Amount: 180% (1.8), Blur kernel: 3x3 Box blur (radius 1)
     const originalPixels = new Uint8ClampedArray(data);
     const blurredPixels = this.boxBlur3x3(originalPixels, lowResW, lowResH);
     const sharpenAmount = 1.8; 
@@ -53,19 +62,23 @@ const Filters = {
       }
     }
 
+    let sharpenSum = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      sharpenSum += data[i] + data[i+1] + data[i+2];
+    }
+    console.log(`[VicePoly Engine] Stage 2.2 Sharpen - Pixel color sum: ${sharpenSum}`);
+
     // --- STAGE 2.3: Textural Mipmap Simulation (Selective Blurring) ---
-    // Blur background regions (max 3x3 Box Blur) using a radial gradient mask
     const originalPixels2 = new Uint8ClampedArray(data);
     const blurredPixels2 = this.boxBlur3x3(originalPixels2, lowResW, lowResH);
     const cx = lowResW / 2;
     const cy = lowResH / 2;
-    const maxDist = Math.sqrt(cx * cx + cy * cy) * 0.75; // Blur boundary radius
+    const maxDist = Math.sqrt(cx * cx + cy * cy) * 0.75; 
 
     for (let y = 0; y < lowResH; y++) {
       for (let x = 0; x < lowResW; x++) {
         const i = (y * lowResW + x) * 4;
         
-        // Calculate radial distance factor (0 at center, 1 at edges)
         const dx = x - cx;
         const dy = y - cy;
         const dist = Math.sqrt(dx * dx + dy * dy);
@@ -74,15 +87,18 @@ const Filters = {
         for (let c = 0; c < 3; c++) {
           const orig = originalPixels2[i + c];
           const blur = blurredPixels2[i + c];
-          // Blend between sharp center and blurred borders (mipmap simulation)
           data[i + c] = Math.round(orig * (1 - blurFactor) + blur * blurFactor);
         }
       }
     }
 
+    let mipmapSum = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      mipmapSum += data[i] + data[i+1] + data[i+2];
+    }
+    console.log(`[VicePoly Engine] Stage 2.3 Mipmap - Pixel color sum: ${mipmapSum}`);
+
     // --- STAGE 2.4 & 2.5: 16-Bit Color Space (RGB5A1) & Bayer 4x4 Dithering ---
-    // Quantization formula: round(Channel / 255 * 31) * (255 / 31)
-    // Add Bayer 4x4 matrix ordered dither before rounding to avoid severe color banding
     const bayerMatrix = [
       [ 0,  8,  2, 10],
       [12,  4, 14,  6],
@@ -94,39 +110,52 @@ const Filters = {
     for (let y = 0; y < lowResH; y++) {
       for (let x = 0; x < lowResW; x++) {
         const i = (y * lowResW + x) * 4;
-        
-        // Retrieve dither scale factor (-0.5 to +0.5 range)
         const matrixVal = bayerMatrix[y % 4][x % 4] / 16 - 0.5;
-        const ditherOffset = matrixVal * stepSize * 1.15; // Amplify dither spread slightly
+        const ditherOffset = matrixVal * stepSize * 1.15;
 
         for (let c = 0; c < 3; c++) {
           const rawVal = data[i + c] + ditherOffset;
           const clampedVal = Math.min(255, Math.max(0, rawVal));
-          // RGB5A1 quantization mapping
           data[i + c] = Math.round(Math.round(clampedVal / stepSize) * stepSize);
         }
       }
     }
 
+    let ditherSum = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      ditherSum += data[i] + data[i+1] + data[i+2];
+    }
+    console.log(`[VicePoly Engine] Stage 2.4/2.5 Dither - Pixel color sum: ${ditherSum}`);
+
     // Put image data back to the low-res canvas
     lowResCtx.putImageData(imgData, 0, 0);
 
     // --- STAGE 2.6: CRT Analog Output & Scanline Emulation ---
-    // 1. Upscale back to screen display target using hardware Nearest-Neighbor
     destCtx.imageSmoothingEnabled = false;
     destCtx.msImageSmoothingEnabled = false;
     destCtx.webkitImageSmoothingEnabled = false;
     destCtx.drawImage(lowResCanvas, 0, 0, displayW, displayH);
 
-    // 2. Perform Chroma Bleeding & Scanline overlay on the upscaled final buffer
     const finalImgData = destCtx.getImageData(0, 0, displayW, displayH);
     const finalData = finalImgData.data;
+
+    let upscaleSum = 0;
+    for (let i = 0; i < finalData.length; i += 4) {
+      upscaleSum += finalData[i] + finalData[i+1] + finalData[i+2];
+    }
+    console.log(`[VicePoly Engine] Stage 2.6 Upscale - Pixel color sum: ${upscaleSum}`);
 
     // Apply chroma blur (analog composite cable YUV low-pass filter)
     this.applyChromaBleed(finalData, displayW, displayH);
 
+    let chromaSum = 0;
+    for (let i = 0; i < finalData.length; i += 4) {
+      chromaSum += finalData[i] + finalData[i+1] + finalData[i+2];
+    }
+    console.log(`[VicePoly Engine] Stage 2.6 Chroma Bleed - Pixel color sum: ${chromaSum}`);
+
     // Apply scanlines: odd rows (y = 2n + 1) attenuated by 38%
-    const attenuation = 0.62; // Multiplier (1.0 - 0.38)
+    const attenuation = 0.62; 
     for (let y = 0; y < displayH; y++) {
       if (y % 2 === 1) {
         for (let x = 0; x < displayW; x++) {
@@ -140,6 +169,12 @@ const Filters = {
 
     // Apply a light analog CRT film grain noise overlay
     this.injectAnalogNoise(finalData, 0.05);
+
+    let finalSum = 0;
+    for (let i = 0; i < finalData.length; i += 4) {
+      finalSum += finalData[i] + finalData[i+1] + finalData[i+2];
+    }
+    console.log(`[VicePoly Engine] Stage 2.6 Final - Pixel color sum: ${finalSum}`);
 
     // Put final composite buffer to display canvas
     destCtx.putImageData(finalImgData, 0, 0);
@@ -174,7 +209,7 @@ const Filters = {
         dest[i] = Math.round(rSum / count);
         dest[i + 1] = Math.round(gSum / count);
         dest[i + 2] = Math.round(bSum / count);
-        dest[i + 3] = srcData[i + 3]; // Preserve alpha
+        dest[i + 3] = srcData[i + 3]; 
       }
     }
     return dest;
@@ -184,7 +219,6 @@ const Filters = {
    * Emulates analog video chroma bleeding (YUV color space low-pass blur on U/V)
    */
   applyChromaBleed: function(pixels, w, h) {
-    // 1. Allocate YUV buffers
     const uChan = new Float32Array(w * h);
     const vChan = new Float32Array(w * h);
     const yChan = new Float32Array(w * h);
