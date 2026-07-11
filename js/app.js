@@ -189,8 +189,8 @@ const App = {
     const now = new Date();
     const day = String(now.getDate()).padStart(2, '0');
     const month = String(now.getMonth() + 1).padStart(2, '0');
-    // Early 2000s cyber date token (casing format: DD.MM.01)
-    return `${day}.${month}.01`;
+    const year = String(now.getFullYear()).slice(-2); // Last 2 digits of current year
+    return `${day}.${month}.${year}`;
   },
 
   resetCamera: function() {
