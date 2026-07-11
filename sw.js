@@ -1,5 +1,5 @@
 // sw.js
-const CACHE_NAME = 'bitcam-cache-v28';
+const CACHE_NAME = 'bitcam-cache-v29';
 const ASSETS = [
   './',
   './index.html',

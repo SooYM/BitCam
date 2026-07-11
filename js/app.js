@@ -7,7 +7,7 @@ const App = {
     width: 0,
     height: 0,
     activePreset: 'flat-pixel',
-    poly: 12,       // Block Size (12px)
+    poly: 16,       // Block Size (16px)
     light: 0,       // 3D Shadow bevel intensity (0%)
     noise: 50,      // Gamma/Brightness level (50%)
 
