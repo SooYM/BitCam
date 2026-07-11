@@ -1,8 +1,8 @@
 // js/filters.js
 
 /**
- * Minecraft-Style Block Art Voxelizer Module
- * Transforms any standard 2D photograph into a mosaic of textured Minecraft blocks.
+ * Voxel Block Art Voxelizer Module
+ * Transforms any standard 2D photograph into a mosaic of textured voxel blocks.
  */
 const Filters = {
   blockTextures: {},
@@ -35,7 +35,7 @@ const Filters = {
   },
 
   /**
-   * Procedurally generates authentic 16x16 pixel texture sheets for Minecraft blocks.
+   * Procedurally generates authentic 16x16 pixel texture sheets for voxel blocks.
    * This runs once on load to populate the texture dictionary with zero network overhead.
    */
   initTextures: function() {
@@ -161,7 +161,7 @@ const Filters = {
 
   /**
    * Main Block Art Voxelization Pipeline
-   * Converts a 2D photo into a grid of 3D-bevelled Minecraft-style textured blocks.
+   * Converts a 2D photo into a grid of 3D-bevelled voxel textured blocks.
    * @param {HTMLImageElement} img - The source image.
    * @param {HTMLCanvasElement} destCanvas - The display canvas to render onto.
    * @param {string} preset - Selected biome ('survival', 'nether', 'creative', 'flat-pixel').
@@ -235,7 +235,7 @@ const Filters = {
           destCtx.fillStyle = `rgb(${avgR}, ${avgG}, ${avgB})`;
           destCtx.fillRect(x, y, cellW, cellH);
         } else {
-          // MINECRAFT BLOCKS: Find closest block by Euclidean distance in color space
+          // VOXEL BLOCKS: Find closest block by Euclidean distance in color space
           let closestType = activePalette[0];
           let minDist = Infinity;
           
@@ -303,6 +303,6 @@ const Filters = {
       }
     }
     
-    console.log("[CraftCam Engine] Minecraft pixel blocks rendering complete.");
+    console.log("[CraftCam Engine] Voxel pixel blocks rendering complete.");
   }
 };

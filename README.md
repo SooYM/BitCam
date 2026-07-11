@@ -1,7 +1,7 @@
 # CraftCam 📸
-> **A Skeuomorphic Retro Camera & Minecraft-Style Voxel Art Generator**
+> **A Skeuomorphic Retro Camera & Voxel Art Generator**
 
-CraftCam is a zero-configuration, single-page progressive web application (PWA) that transforms your photos into textured Minecraft-style block mosaics and nostalgic pixel art.
+CraftCam is a zero-configuration, single-page progressive web application (PWA) that transforms your photos into textured voxel block mosaics and nostalgic pixel art.
 
 *Inspired by the blocky, retro aesthetic of classic voxel sandboxes.*
 
@@ -37,9 +37,9 @@ CraftCam processes the loaded image in real-time through a client-side voxelizat
 *   Standard color-pixelation block rendering.
 *   Draws clean, solid flat-color blocks for a smooth, high-fidelity 24-bit retro pixel art look.
 
-#### 🧱 8 BIT Mode (Procedural Minecraft Block Art)
+#### 🧱 8 BIT Mode (Procedural Voxel Block Art)
 *   **Procedural Block Texture Compiler**: Generates authentic 16x16 pixel textures dynamically on startup with zero network dependencies (includes *Stone, Grass, Dirt, Leaves, Water, Sand, Wood, and Obsidian*).
-*   **Euclidean Color-Proximity Check**: Compares the cell's average color to the target blocks' color profiles in 3D color space, mapping each cell to the closest matching Minecraft block texture sheet.
+*   **Euclidean Color-Proximity Check**: Compares the cell's average color to the target blocks' color profiles in 3D color space, mapping each cell to the closest matching voxel block texture sheet.
 *   **8-Bit RGB Color Quantization**: Clamps the color of the rendered texture sub-pixels into a 3-3-2 bit (8-bit) color depth, yielding exactly 256 colors total for that iconic, crunchy retro MS-DOS / Sega console look.
 
 ---
