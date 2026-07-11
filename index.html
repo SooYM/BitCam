@@ -121,44 +121,50 @@
           <img id="output-image" class="output-image" alt="Rendered VicePoly Output" style="display: none;">
         </div>
 
-        <!-- Settings Panel (Retro digicam style overlay) -->
+        <!-- Settings Panel (Minecraft Voxel Style HUD) -->
         <div id="settings-panel" class="settings-panel" style="display: none;">
           <div class="settings-section">
-            <span class="settings-title">MODE PRESET</span>
+            <span class="settings-title">BIOME PRESET</span>
             <div class="preset-buttons">
-              <button class="btn-preset active" data-preset="vice-city">VICE CITY</button>
-              <button class="btn-preset" data-preset="san-andreas">SAN ANDREAS</button>
-              <button class="btn-preset" data-preset="ps2">PS2 STD</button>
-              <button class="btn-preset" data-preset="ps1">PS1 CLASSIC</button>
+              <button class="btn-preset active" data-preset="survival">SURVIVAL</button>
+              <button class="btn-preset" data-preset="nether">NETHER</button>
+              <button class="btn-preset" data-preset="creative">CREATIVE</button>
+              <button class="btn-preset" data-preset="flat-pixel">FLAT PIXEL</button>
             </div>
           </div>
           
           <div class="settings-section">
             <div class="slider-header">
-              <span class="slider-label">POLYGONS</span>
-              <span id="val-poly" class="slider-value">MID</span>
+              <span class="slider-label">BLOCK SIZE</span>
+              <span id="val-poly" class="slider-value">16px</span>
             </div>
-            <input type="range" id="slider-poly" min="70" max="180" value="120" class="retro-slider">
+            <input type="range" id="slider-poly" min="8" max="36" value="16" class="retro-slider">
           </div>
 
           <div class="settings-section">
             <div class="slider-header">
-              <span class="slider-label">LIGHTING</span>
-              <span id="val-light" class="slider-value">55%</span>
+              <span class="slider-label">3D SHADOWS</span>
+              <span id="val-light" class="slider-value">65%</span>
             </div>
-            <input type="range" id="slider-light" min="0" max="100" value="55" class="retro-slider">
+            <input type="range" id="slider-light" min="0" max="100" value="65" class="retro-slider">
           </div>
 
           <div class="settings-section">
             <div class="slider-header">
-              <span class="slider-label">CRT NOISE</span>
-              <span id="val-noise" class="slider-value">LOW</span>
+              <span class="slider-label">GAMMA/LIGHT</span>
+              <span id="val-noise" class="slider-value">50%</span>
             </div>
-            <input type="range" id="slider-noise" min="0" max="15" value="4" class="retro-slider">
+            <input type="range" id="slider-noise" min="10" max="100" value="50" class="retro-slider">
           </div>
         </div>
       </div>
     </section>
+
+    <!-- App Info Panel Overlay -->
+    <div class="control-hints">
+      <div>LOAD: BOTTOM-LEFT BUTTON</div>
+      <div>SAVE: CLICK SAVE BUTTON OR LONG-PRESS IMAGE</div>
+    </div>
 
     <!-- Camera Physical Controls Panel (3-button layout) -->
     <footer class="camera-controls-panel">
@@ -196,8 +202,6 @@
 
   <!-- Application JS Modules -->
   <script src="https://cdn.jsdelivr.net/npm/heic-to@1.5.2/dist/iife/heic-to.js"></script>
-  <script src="js/sobel.js"></script>
-  <script src="js/delaunay.js"></script>
   <script src="js/filters.js"></script>
   <script src="js/app.js"></script>
 

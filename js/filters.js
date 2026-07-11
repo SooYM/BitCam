@@ -1,29 +1,173 @@
 // js/filters.js
 
 /**
- * Region-Segmented 3D Flat-Shaded Vector Mesh Rendering Module
- * Maps out the outlines of individual objects and triangulates them independently
- * to enforce clean, hard outlines, flat diffuse textures, and zero boundary webbing.
+ * Minecraft-Style Block Art Voxelizer Module
+ * Transforms any standard 2D photograph into a mosaic of textured Minecraft blocks.
  */
 const Filters = {
+  blockTextures: {},
+  initialized: false,
+
+  // Reference average colors for closest-match Euclidean distance checks
+  blockColors: {
+    'grass':     { r: 74,  g: 143, b: 40  },
+    'leaves':    { r: 46,  g: 91,  b: 30  },
+    'water':     { r: 63,  g: 118, b: 228 },
+    'stone':     { r: 115, g: 115, b: 115 },
+    'sand':      { r: 219, g: 207, b: 156 },
+    'dirt':      { r: 134, g: 96,  b: 67  },
+    'wood':      { r: 171, g: 125, b: 73  },
+    'obsidian':  { r: 35,  g: 25,  b: 50  },
+    'gold':      { r: 253, g: 240, b: 102 },
+    'redstone':  { r: 194, g: 26,  b: 26  },
+    'iron':      { r: 213, g: 213, b: 213 },
+    'brick':     { r: 171, g: 93,  b: 73  }
+  },
+
   /**
-   * Main Triangulation & Shading Pipeline
-   * Converts a 2D photo into a flat-shaded 3D-mesh style vector art render.
+   * Procedurally generates authentic 16x16 pixel texture sheets for Minecraft blocks.
+   * This runs once on load to populate the texture dictionary with zero network overhead.
+   */
+  initTextures: function() {
+    if (this.initialized) return;
+
+    // Helper to generate a noisy variation of a hex base color
+    const randJitter = (hex, jitter) => {
+      const r = parseInt(hex.slice(1, 3), 16) + (Math.random() - 0.5) * jitter;
+      const g = parseInt(hex.slice(3, 5), 16) + (Math.random() - 0.5) * jitter;
+      const b = parseInt(hex.slice(5, 7), 16) + (Math.random() - 0.5) * jitter;
+      const finalR = Math.min(255, Math.max(0, Math.round(r)));
+      const finalG = Math.min(255, Math.max(0, Math.round(g)));
+      const finalB = Math.min(255, Math.max(0, Math.round(b)));
+      return `rgb(${finalR}, ${finalG}, ${finalB})`;
+    };
+
+    const makeNoiseTexture = (baseHex, jitter) => {
+      const tex = [];
+      for (let i = 0; i < 256; i++) {
+        tex.push(randJitter(baseHex, jitter));
+      }
+      return tex;
+    };
+
+    // Stone: gray with noise
+    this.blockTextures['stone'] = makeNoiseTexture('#737373', 25);
+
+    // Dirt: brown with noise
+    this.blockTextures['dirt'] = makeNoiseTexture('#866043', 20);
+
+    // Grass: green top, dirt bottom
+    const grass = [];
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
+        if (y < 4 || (y === 4 && Math.random() > 0.4) || (y === 5 && Math.random() > 0.85)) {
+          grass.push(randJitter('#4a8f28', 20)); // Grass green
+        } else {
+          grass.push(randJitter('#866043', 15)); // Dirt brown
+        }
+      }
+    }
+    this.blockTextures['grass'] = grass;
+
+    // Leaves: dark green leaf gaps
+    const leaves = [];
+    for (let i = 0; i < 256; i++) {
+      leaves.push(Math.random() > 0.25 ? randJitter('#2e5b1e', 15) : randJitter('#1c3b12', 10));
+    }
+    this.blockTextures['leaves'] = leaves;
+
+    // Water: blue waves
+    const water = [];
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
+        const wave = (x + y) % 6 < 2;
+        water.push(wave ? randJitter('#5c84ff', 15) : randJitter('#3f76e4', 15));
+      }
+    }
+    this.blockTextures['water'] = water;
+
+    // Sand: beige sand granules
+    this.blockTextures['sand'] = makeNoiseTexture('#dbcf9c', 16);
+
+    // Wood: horizontal rings
+    const wood = [];
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
+        const ring = y === 2 || y === 6 || y === 10 || y === 14;
+        wood.push(ring ? randJitter('#775128', 10) : randJitter('#ab7d49', 15));
+      }
+    }
+    this.blockTextures['wood'] = wood;
+
+    // Obsidian: black/purple volcanic
+    const obsidian = [];
+    for (let i = 0; i < 256; i++) {
+      obsidian.push(Math.random() > 0.15 ? randJitter('#161122', 12) : randJitter('#3d1e5c', 20));
+    }
+    this.blockTextures['obsidian'] = obsidian;
+
+    // Gold Block: shiny gold tiles
+    const gold = [];
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
+        const border = x === 0 || y === 0 || x === 15 || y === 15;
+        gold.push(border ? randJitter('#c69b2b', 10) : randJitter('#fdf066', 15));
+      }
+    }
+    this.blockTextures['gold'] = gold;
+
+    // Redstone Block: red glow dust
+    const redstone = [];
+    for (let i = 0; i < 256; i++) {
+      redstone.push(Math.random() > 0.2 ? randJitter('#a21616', 20) : randJitter('#f74646', 30));
+    }
+    this.blockTextures['redstone'] = redstone;
+
+    // Iron Block: industrial plate
+    const iron = [];
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
+        const border = x === 0 || y === 0 || x === 15 || y === 15 || x === y || x === (15 - y);
+        iron.push(border ? randJitter('#b0b0b0', 10) : randJitter('#e1e1e1', 12));
+      }
+    }
+    this.blockTextures['iron'] = iron;
+
+    // Brick: red terracotta tiles
+    const brick = [];
+    for (let y = 0; y < 16; y++) {
+      for (let x = 0; x < 16; x++) {
+        const mortar = y === 0 || y === 5 || y === 10 || y === 15 || 
+                      ((y > 0 && y < 5) && x === 7) ||
+                      ((y > 5 && y < 10) && x === 15) ||
+                      ((y > 10 && y < 15) && x === 7);
+        brick.push(mortar ? randJitter('#d6c5bc', 10) : randJitter('#ab5d49', 15));
+      }
+    }
+    this.blockTextures['brick'] = brick;
+
+    this.initialized = true;
+  },
+
+  /**
+   * Main Block Art Voxelization Pipeline
+   * Converts a 2D photo into a grid of 3D-bevelled Minecraft-style textured blocks.
    * @param {HTMLImageElement} img - The source image.
    * @param {HTMLCanvasElement} destCanvas - The display canvas to render onto.
-   * @param {string} preset - The selected era preset ('vice-city', 'san-andreas', 'ps2', 'ps1').
-   * @param {number} poly - The polygon slider value (segmentation resolution).
-   * @param {number} light - The lighting contrast slider value.
-   * @param {number} noise - The CRT noise slider value.
+   * @param {string} preset - Selected biome ('survival', 'nether', 'creative', 'flat-pixel').
+   * @param {number} blockSize - The size of each block cell on canvas (8px to 36px).
+   * @param {number} shadowIntensity - Bevel 3D shading intensity (0 to 100).
+   * @param {number} gamma - Gamma/brightness multiplier (10 to 100).
    */
-  apply6thGenPipeline: function(img, destCanvas, preset, poly, light, noise) {
-    console.log(`[VicePoly Engine] Rendering with Preset: ${preset}, Poly: ${poly}, Light: ${light}%, Noise: ${noise}%`);
+  apply6thGenPipeline: function(img, destCanvas, preset, blockSize, shadowIntensity, gamma) {
+    // 1. Ensure procedural texture data is compiled
+    this.initTextures();
     
     const destCtx = destCanvas.getContext('2d');
     const displayW = destCanvas.width;
     const displayH = destCanvas.height;
 
-    // 1. Draw original image onto offscreen canvas to extract colors and edge points
+    // 2. Draw original image onto offscreen canvas to sample average cell colors
     const offscreen = document.createElement('canvas');
     offscreen.width = displayW;
     offscreen.height = displayH;
@@ -33,226 +177,114 @@ const Filters = {
     const imgData = offscreenCtx.getImageData(0, 0, displayW, displayH);
     const pixels = imgData.data;
 
-    // 2. Segment the image into connected-component color regions (objects) using dynamic poly slider value
-    const regions = Sobel.extractPoints(imgData, poly);
-    console.log(`[VicePoly Engine] Segmented scene into ${regions.length} object shapes.`);
-
-    // 3. Clear destination canvas and pre-fill with background color
-    destCtx.fillStyle = '#18181c';
+    // Clear destination canvas
+    destCtx.fillStyle = '#0f0f12';
     destCtx.fillRect(0, 0, displayW, displayH);
 
-    // Helper to get luminance (for pseudo-3D height map depth Z)
-    const getLum = (p) => {
-      const cx = Math.max(0, Math.min(displayW - 1, Math.round(p.x)));
-      const cy = Math.max(0, Math.min(displayH - 1, Math.round(p.y)));
-      const idx = (cy * displayW + cx) * 4;
-      return 0.299 * pixels[idx] + 0.587 * pixels[idx + 1] + 0.114 * pixels[idx + 2];
-    };
+    // 3. Set allowed block palette based on Biome Preset
+    let activePalette = Object.keys(this.blockColors);
+    if (preset === 'survival') {
+      activePalette = ['grass', 'leaves', 'water', 'stone', 'sand', 'dirt', 'wood', 'obsidian'];
+    } else if (preset === 'nether') {
+      activePalette = ['obsidian', 'redstone', 'brick', 'dirt', 'stone'];
+    } else if (preset === 'creative') {
+      activePalette = ['iron', 'gold', 'water', 'obsidian', 'stone', 'brick'];
+    }
 
-    /**
-     * Applies Vice City / Y2K warm post-processing color grading:
-     * - Contrast +10%
-     * - Saturation -20%
-     * - Warm highlights, Cool shadows
-     */
-    const applyY2KColorGrading = (r, g, b) => {
-      let red = (r - 128) * 1.1 + 128;
-      let green = (g - 128) * 1.1 + 128;
-      let blue = (b - 128) * 1.1 + 128;
+    const gammaFactor = gamma / 50; // 50% is neutral 1.0
 
-      const y = 0.299 * red + 0.587 * green + 0.114 * blue;
-      let u = (-0.168736 * red - 0.331264 * green + 0.5 * blue) * 0.8;
-      let v = (0.5 * red - 0.418688 * green - 0.081312 * blue) * 0.8;
+    // 4. Voxel Grid rendering loop
+    for (let y = 0; y < displayH; y += blockSize) {
+      for (let x = 0; x < displayW; x += blockSize) {
+        const cellW = Math.min(blockSize, displayW - x);
+        const cellH = Math.min(blockSize, displayH - y);
 
-      const highlightThresh = 175;
-      const shadowThresh = 80;
-
-      if (y > highlightThresh) {
-        const intensity = ((y - highlightThresh) / (255 - highlightThresh)) * 14;
-        red += intensity;
-        green += intensity * 0.4;
-        blue -= intensity * 0.3;
-      } else if (y < shadowThresh) {
-        const intensity = ((shadowThresh - y) / shadowThresh) * 10;
-        blue += intensity;
-        green += intensity * 0.2;
-        red -= intensity * 0.4;
-      }
-
-      red = y + 1.402 * v;
-      green = y - 0.344136 * u - 0.714136 * v;
-      blue = y + 1.772 * u;
-
-      return {
-        r: Math.min(255, Math.max(0, Math.round(red))),
-        g: Math.min(255, Math.max(0, Math.round(green))),
-        b: Math.min(255, Math.max(0, Math.round(blue)))
-      };
-    };
-
-    /**
-     * Applies San Andreas dusty sepia/orange grading:
-     * - Contrast +15%
-     * - Warm orange/brown tint
-     * - Desaturated cool shadows
-     */
-    const applySanAndreasColorGrading = (r, g, b) => {
-      let red = (r - 128) * 1.15 + 128;
-      let green = (g - 128) * 1.15 + 128;
-      let blue = (b - 128) * 1.15 + 128;
-
-      // Dusty sepia-orange offset
-      red = red * 1.05 + 8;
-      green = green * 0.98 + 3;
-      blue = blue * 0.86 - 4;
-
-      return {
-        r: Math.min(255, Math.max(0, Math.round(red))),
-        g: Math.min(255, Math.max(0, Math.round(green))),
-        b: Math.min(255, Math.max(0, Math.round(blue)))
-      };
-    };
-
-    /**
-     * Coarse bit-depth color quantization (simulates retro DAC hardware constraints)
-     */
-    const applyQuantization = (r, g, b, levels) => {
-      const step = 255 / (levels - 1);
-      return {
-        r: Math.min(255, Math.max(0, Math.round(Math.round(r / step) * step))),
-        g: Math.min(255, Math.max(0, Math.round(Math.round(g / step) * step))),
-        b: Math.min(255, Math.max(0, Math.round(Math.round(b / step) * step)))
-      };
-    };
-
-    const getGradedColor = (r, g, b) => {
-      if (preset === 'vice-city') {
-        return applyY2KColorGrading(r, g, b);
-      } else if (preset === 'san-andreas') {
-        return applySanAndreasColorGrading(r, g, b);
-      } else if (preset === 'ps1') {
-        return applyQuantization(r, g, b, 8); // Coarse 9-bit color (PS1)
-      } else {
-        return applyQuantization(r, g, b, 32); // Standard 16-bit color (PS2 STD)
-      }
-    };
-
-    // Shading direction vector from top-left
-    const lx = -0.485;
-    const ly = -0.485;
-    const lz = 0.728;
-    
-    // Scale height map depth Z based on lighting slider value (0.0 to 0.85)
-    const zScale = (light / 100) * 0.85;
-
-    // 4. Render each segmented object independently
-    for (const reg of regions) {
-      if (reg.vertices.length < 3) continue;
-
-      // Triangulate boundary vertices
-      const triangles = Delaunay.triangulate(reg.vertices);
-      const graded = getGradedColor(reg.color.r, reg.color.g, reg.color.b);
-
-      for (const t of triangles) {
-        // A. Calculate centroid
-        const cx1 = (t.p1.x + t.p2.x + t.p3.x) / 3;
-        const cy1 = (t.p1.y + t.p2.y + t.p3.y) / 3;
-
-        // B. Map centroid back to low-res coordinates to check region inclusion
-        const lowResX = Math.round(cx1 / reg.scaleX);
-        const lowResY = Math.round(cy1 / reg.scaleY);
-
-        // BOUNDARY CLIP: Skip out-of-bounds triangles (preserves concave curves)
-        if (!reg.regionSet.has(`${lowResX},${lowResY}`)) {
-          continue;
+        // A. Extract average color of image pixels inside this cell bounds
+        let sumR = 0, sumG = 0, sumB = 0, count = 0;
+        for (let py = 0; py < cellH; py++) {
+          for (let px = 0; px < cellW; px++) {
+            const idx = ((y + py) * displayW + (x + px)) * 4;
+            sumR += pixels[idx];
+            sumG += pixels[idx + 1];
+            sumB += pixels[idx + 2];
+            count++;
+          }
         }
+        
+        let avgR = Math.round(sumR / count);
+        let avgG = Math.round(sumG / count);
+        let avgB = Math.round(sumB / count);
 
-        // C. Calculate pseudo-3D normals and Lambertian shading
-        const l1 = getLum(t.p1);
-        const l2 = getLum(t.p2);
-        const l3 = getLum(t.p3);
+        // Apply gamma lighting adjustment
+        avgR = Math.min(255, Math.max(0, Math.round(avgR * gammaFactor)));
+        avgG = Math.min(255, Math.max(0, Math.round(avgG * gammaFactor)));
+        avgB = Math.min(255, Math.max(0, Math.round(avgB * gammaFactor)));
 
-        const z1 = l1 * zScale;
-        const z2 = l2 * zScale;
-        const z3 = l3 * zScale;
+        if (preset === 'flat-pixel') {
+          // FLAT PIXEL: Standard color-pixelation block (flat render)
+          destCtx.fillStyle = `rgb(${avgR}, ${avgG}, ${avgB})`;
+          destCtx.fillRect(x, y, cellW, cellH);
+        } else {
+          // MINECRAFT BLOCKS: Find closest block by Euclidean distance in color space
+          let closestType = activePalette[0];
+          let minDist = Infinity;
+          
+          for (const type of activePalette) {
+            const bc = this.blockColors[type];
+            const dist = 
+              (avgR - bc.r) * (avgR - bc.r) +
+              (avgG - bc.g) * (avgG - bc.g) +
+              (avgB - bc.b) * (avgB - bc.b);
+              
+            if (dist < minDist) {
+              minDist = dist;
+              closestType = type;
+            }
+          }
 
-        // Plane vectors
-        const ux = t.p2.x - t.p1.x;
-        const buy = t.p2.y - t.p1.y;
-        const uz = z2 - z1;
-
-        const vx = t.p3.x - t.p1.x;
-        const vy = t.p3.y - t.p1.y;
-        const vz = z3 - z1;
-
-        // Normal cross product
-        let nx = buy * vz - uz * vy;
-        let ny = uz * vx - ux * vz;
-        let nz = ux * vy - buy * vx;
-
-        let factor = 1.0;
-        const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
-        if (len > 0.0001) {
-          nx /= len;
-          ny /= len;
-          nz /= len;
-
-          const dot = nx * lx + ny * ly + nz * lz;
-          // Apply lighting contrast multiplier
-          factor = 1.0 + dot * (light / 100);
-          factor = Math.min(1.45, Math.max(0.55, factor));
-
-          // Baked AO ground shadow (Attenuate downward faces by 28%)
-          // Disabled for PS1 Classic to respect era limitations
-          if (preset !== 'ps1' && ny < -0.22) {
-            factor *= 0.72;
+          // B. Draw procedural 16x16 block texture scaled into the cell
+          const tex = this.blockTextures[closestType];
+          const subSize = cellW / 16;
+          
+          for (let py = 0; py < 16; py++) {
+            for (let px = 0; px < 16; px++) {
+              const texColorStr = tex[py * 16 + px];
+              
+              // Extract sub-pixel RGB, apply brightness/gamma adjustment
+              const rgbVals = texColorStr.match(/\d+/g).map(Number);
+              const subR = Math.min(255, Math.max(0, Math.round(rgbVals[0] * gammaFactor)));
+              const subG = Math.min(255, Math.max(0, Math.round(rgbVals[1] * gammaFactor)));
+              const subB = Math.min(255, Math.max(0, Math.round(rgbVals[2] * gammaFactor)));
+              
+              destCtx.fillStyle = `rgb(${subR}, ${subG}, ${subB})`;
+              destCtx.fillRect(
+                x + px * subSize, 
+                y + py * subSize, 
+                Math.ceil(subSize), 
+                Math.ceil(subSize)
+              );
+            }
           }
         }
 
-        const finalR = Math.min(255, Math.max(0, Math.round(graded.r * factor)));
-        const finalG = Math.min(255, Math.max(0, Math.round(graded.g * factor)));
-        const finalB = Math.min(255, Math.max(0, Math.round(graded.b * factor)));
+        // C. Draw 3D Voxel block bevel borders
+        if (shadowIntensity > 0) {
+          const borderThickness = Math.max(1, cellW / 16);
+          const shadowAlpha = shadowIntensity / 100;
+          
+          // Top & Left raised light bevel
+          destCtx.fillStyle = `rgba(255, 255, 255, ${shadowAlpha * 0.18})`;
+          destCtx.fillRect(x, y, cellW, borderThickness);
+          destCtx.fillRect(x, y, borderThickness, cellH);
 
-        // D. Draw filled polygon
-        destCtx.beginPath();
-        destCtx.moveTo(t.p1.x, t.p1.y);
-        destCtx.lineTo(t.p2.x, t.p2.y);
-        destCtx.lineTo(t.p3.x, t.p3.y);
-        destCtx.closePath();
-
-        destCtx.fillStyle = `rgb(${finalR}, ${finalG}, ${finalB})`;
-        destCtx.fill();
-
-        // Stroke outlines to prevent seams
-        destCtx.strokeStyle = destCtx.fillStyle;
-        destCtx.lineWidth = 0.8;
-        destCtx.stroke();
+          // Bottom & Right drop shadow bevel
+          destCtx.fillStyle = `rgba(0, 0, 0, ${shadowAlpha * 0.32})`;
+          destCtx.fillRect(x, y + cellH - borderThickness, cellW, borderThickness);
+          destCtx.fillRect(x + cellW - borderThickness, y, borderThickness, cellH);
+        }
       }
     }
     
-    // 5. Inject CRT noise film grain based on noise slider value
-    if (noise > 0) {
-      this.injectAnalogNoise(destCtx, displayW, displayH, noise / 100);
-    }
-
-    console.log("[VicePoly Engine] Flat-shaded 3D mesh rendering complete.");
-  },
-
-  /**
-   * Injects high-frequency analog noise (CRT grain) onto the rendered canvas buffer.
-   */
-  injectAnalogNoise: function(ctx, w, h, intensity) {
-    const imgData = ctx.getImageData(0, 0, w, h);
-    const data = imgData.data;
-    const factor = intensity * 255;
-
-    for (let i = 0; i < data.length; i += 4) {
-      const grain = (Math.random() - 0.5) * factor;
-      data[i]     = Math.min(255, Math.max(0, data[i] + grain));
-      data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + grain));
-      data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + grain));
-    }
-
-    ctx.putImageData(imgData, 0, 0);
+    console.log("[VicePoly Engine] Minecraft pixel blocks rendering complete.");
   }
 };

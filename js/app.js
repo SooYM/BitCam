@@ -6,18 +6,18 @@ const App = {
     originalImage: null,
     width: 0,
     height: 0,
-    activePreset: 'vice-city',
-    poly: 120,
-    light: 55,
-    noise: 4
+    activePreset: 'survival',
+    poly: 16,       // Block Size (8px to 36px)
+    light: 65,      // 3D Shadow bevel intensity (0% to 100%)
+    noise: 50       // Gamma/Brightness level (10% to 100%)
   },
 
-  // Era Preset Defaults
+  // Biome Preset Defaults
   presets: {
-    'vice-city': { poly: 120, light: 55, noise: 4 },
-    'san-andreas': { poly: 165, light: 65, noise: 2 },
-    'ps2': { poly: 130, light: 50, noise: 0 },
-    'ps1': { poly: 80, light: 40, noise: 9 }
+    'survival': { poly: 16, light: 65, noise: 50 },
+    'nether': { poly: 18, light: 80, noise: 40 },
+    'creative': { poly: 20, light: 55, noise: 60 },
+    'flat-pixel': { poly: 12, light: 0, noise: 50 }
   },
 
   // DOM Elements
@@ -74,7 +74,7 @@ const App = {
     // Load file stream
     el.uploadBtn.addEventListener('click', () => el.fileInput.click());
 
-    // Shutter Trigger acts as a Page Refresh (as requested)
+    // Shutter Trigger acts as a Page Refresh
     el.shutterTrigger.addEventListener('click', () => {
       location.reload();
     });
@@ -88,7 +88,7 @@ const App = {
     el.sliderPoly.addEventListener('input', (e) => {
       const val = parseInt(e.target.value);
       this.state.poly = val;
-      el.valPoly.textContent = val < 100 ? 'LOW' : (val > 145 ? 'HIGH' : 'MID');
+      el.valPoly.textContent = val + 'px';
       this.processImage();
     });
 
@@ -102,7 +102,7 @@ const App = {
     el.sliderNoise.addEventListener('input', (e) => {
       const val = parseInt(e.target.value);
       this.state.noise = val;
-      el.valNoise.textContent = val === 0 ? 'OFF' : (val < 6 ? 'LOW' : (val < 11 ? 'MID' : 'HIGH'));
+      el.valNoise.textContent = val + '%';
       this.processImage();
     });
 
@@ -127,9 +127,9 @@ const App = {
           el.sliderNoise.value = config.noise;
 
           // Sync labels
-          el.valPoly.textContent = config.poly < 100 ? 'LOW' : (config.poly > 145 ? 'HIGH' : 'MID');
+          el.valPoly.textContent = config.poly + 'px';
           el.valLight.textContent = config.light + '%';
-          el.valNoise.textContent = config.noise === 0 ? 'OFF' : (config.noise < 6 ? 'LOW' : (config.noise < 11 ? 'MID' : 'HIGH'));
+          el.valNoise.textContent = config.noise + '%';
 
           this.processImage();
         }
@@ -288,7 +288,7 @@ const App = {
     if (isHEIC && typeof HeicTo !== 'undefined') {
       this.showLoading(true);
       const loadingTextEl = document.querySelector('.loading-text');
-      const originalText = loadingTextEl ? loadingTextEl.textContent : 'RENDERING 3D MESH...';
+      const originalText = loadingTextEl ? loadingTextEl.textContent : 'BUILDING PIXEL WORLD...';
       if (loadingTextEl) {
         loadingTextEl.textContent = 'CONVERTING HEIC PHOTO...';
       }
@@ -414,6 +414,18 @@ const App = {
       if (this.elements.outputImage) {
         this.elements.outputImage.src = canvas.toDataURL('image/png');
         this.elements.outputImage.style.display = 'block';
+        
+        // Apply Minecraft-style CSS filters
+        if (this.state.activePreset === 'nether') {
+          this.elements.outputImage.style.filter = 'saturate(1.25) contrast(1.2) brightness(0.9) drop-shadow(0 0 4px rgba(255, 60, 0, 0.25))';
+        } else if (this.state.activePreset === 'creative') {
+          this.elements.outputImage.style.filter = 'contrast(1.08) saturate(1.1) brightness(1.04)';
+        } else if (this.state.activePreset === 'flat-pixel') {
+          this.elements.outputImage.style.filter = 'contrast(1.1) saturate(0.95)';
+        } else {
+          // survival
+          this.elements.outputImage.style.filter = 'saturate(1.05) contrast(1.05)';
+        }
       }
 
       this.showLoading(false);
