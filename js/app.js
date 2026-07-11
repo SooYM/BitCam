@@ -41,6 +41,10 @@ const App = {
     el.loadingOverlay = document.getElementById('loading-overlay');
     el.screenDisplay = document.getElementById('screen-display');
 
+    // Style Selector HUD Elements
+    el.styleSelector = document.getElementById('style-selector');
+    el.styleBtns = document.querySelectorAll('.btn-style');
+
     // PWA elements
     el.pwaPrompt = document.getElementById('pwa-prompt');
     el.pwaPromptText = document.getElementById('pwa-prompt-text');
@@ -65,6 +69,16 @@ const App = {
 
     // Save image render
     el.downloadPng.addEventListener('click', () => this.downloadPNG());
+
+    // Style Selector Button handlers
+    el.styleBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        el.styleBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.state.activePreset = btn.getAttribute('data-style');
+        this.processImage();
+      });
+    });
 
     // PWA close handler
     if (el.pwaCloseBtn) {
@@ -173,6 +187,7 @@ const App = {
     this.elements.canvasWrapper.classList.add('hidden');
     this.elements.downloadPng.setAttribute('disabled', 'true');
     this.elements.ledReady.classList.remove('glowing');
+    this.elements.styleSelector.style.display = 'none';
     if (this.elements.screenDisplay) {
       this.elements.screenDisplay.classList.remove('camera-active');
     }
@@ -265,6 +280,7 @@ const App = {
         this.elements.canvasWrapper.style.display = 'flex';
       }
       this.elements.downloadPng.removeAttribute('disabled');
+      this.elements.styleSelector.style.display = 'flex';
       
       // Turn on green "READY" status light
       this.elements.ledReady.classList.add('glowing');
@@ -336,7 +352,11 @@ const App = {
       if (this.elements.outputImage) {
         this.elements.outputImage.src = canvas.toDataURL('image/png');
         this.elements.outputImage.style.display = 'block';
-        this.elements.outputImage.style.filter = 'contrast(1.1) saturate(0.95)';
+        if (this.state.activePreset === 'survival') {
+          this.elements.outputImage.style.filter = 'contrast(1.15) saturate(1.05)';
+        } else {
+          this.elements.outputImage.style.filter = 'contrast(1.1) saturate(0.95)';
+        }
       }
 
       this.showLoading(false);
@@ -349,7 +369,7 @@ const App = {
     if (!img || !img.src) return;
 
     const link = document.createElement('a');
-    link.download = `pixelart_${Date.now()}.png`;
+    link.download = `pixelart_${this.state.activePreset}_${Date.now()}.png`;
     link.href = img.src;
     document.body.appendChild(link);
     link.click();

@@ -25,6 +25,16 @@ const Filters = {
   },
 
   /**
+   * Quantizes RGB values to 3-3-2 bit (8-bit) color depth (256 colors total).
+   */
+  apply8BitQuantization: function(r, g, b) {
+    const red = Math.round(((r >> 5) * 255) / 7);
+    const green = Math.round(((g >> 5) * 255) / 7);
+    const blue = Math.round(((b >> 6) * 255) / 3);
+    return { r: red, g: green, b: blue };
+  },
+
+  /**
    * Procedurally generates authentic 16x16 pixel texture sheets for Minecraft blocks.
    * This runs once on load to populate the texture dictionary with zero network overhead.
    */
@@ -252,9 +262,17 @@ const Filters = {
               
               // Extract sub-pixel RGB, apply brightness/gamma adjustment
               const rgbVals = texColorStr.match(/\d+/g).map(Number);
-              const subR = Math.min(255, Math.max(0, Math.round(rgbVals[0] * gammaFactor)));
-              const subG = Math.min(255, Math.max(0, Math.round(rgbVals[1] * gammaFactor)));
-              const subB = Math.min(255, Math.max(0, Math.round(rgbVals[2] * gammaFactor)));
+              let subR = Math.min(255, Math.max(0, Math.round(rgbVals[0] * gammaFactor)));
+              let subG = Math.min(255, Math.max(0, Math.round(rgbVals[1] * gammaFactor)));
+              let subB = Math.min(255, Math.max(0, Math.round(rgbVals[2] * gammaFactor)));
+              
+              // Apply 8-bit RGB color quantization for Survival Mode
+              if (preset === 'survival') {
+                const qColor = this.apply8BitQuantization(subR, subG, subB);
+                subR = qColor.r;
+                subG = qColor.g;
+                subB = qColor.b;
+              }
               
               destCtx.fillStyle = `rgb(${subR}, ${subG}, ${subB})`;
               destCtx.fillRect(
