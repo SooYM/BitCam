@@ -9,7 +9,14 @@ const App = {
     activePreset: 'flat-pixel',
     poly: 12,       // Block Size (12px)
     light: 0,       // 3D Shadow bevel intensity (0%)
-    noise: 50       // Gamma/Brightness level (50%)
+    noise: 50,      // Gamma/Brightness level (50%)
+
+    // Live camera state
+    cameraMode: false,      // true = live camera, false = photo upload
+    cameraActive: false,    // true when stream is running
+    mediaStream: null,
+    animFrameId: null,
+    frozen: false           // true when a snapshot is captured
   },
 
   // DOM Elements
@@ -29,7 +36,9 @@ const App = {
     
     // 3-button physical controls
     el.uploadBtn = document.getElementById('upload-btn');
+    el.uploadBtnCap = document.getElementById('upload-btn-cap');
     el.shutterTrigger = document.getElementById('shutter-trigger');
+    el.shutterLabel = document.getElementById('shutter-label');
     el.downloadPng = document.getElementById('download-png');
     
     // Indicators
@@ -40,6 +49,7 @@ const App = {
     el.canvasWrapper = document.getElementById('canvas-wrapper');
     el.loadingOverlay = document.getElementById('loading-overlay');
     el.screenDisplay = document.getElementById('screen-display');
+    el.cameraVideo = document.getElementById('camera-video');
 
     // Style Selector HUD Elements
     el.styleSelector = document.getElementById('style-selector');
@@ -58,12 +68,21 @@ const App = {
   bindEvents: function() {
     const el = this.elements;
 
-    // Load file stream
-    el.uploadBtn.addEventListener('click', () => el.fileInput.click());
+    // CAM button: toggle between camera and upload mode
+    el.uploadBtn.addEventListener('click', () => this.toggleCameraMode());
 
-    // Shutter Trigger acts as a Page Refresh
+    // Shutter Trigger: Capture snapshot in live mode, refresh in photo mode
     el.shutterTrigger.addEventListener('click', () => {
-      location.reload();
+      if (this.state.cameraActive && !this.state.frozen) {
+        // Live mode: freeze the current frame
+        this.captureSnapshot();
+      } else if (this.state.frozen) {
+        // Frozen mode: unfreeze and resume live
+        this.resumeLive();
+      } else {
+        // Photo mode: page refresh
+        location.reload();
+      }
     });
 
     el.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
@@ -84,7 +103,14 @@ const App = {
           el.qualityLabel.textContent = style === 'survival' ? 'HQ 8b' : 'HQ 16b';
         }
 
-        this.processImage();
+        // If we have a photo loaded (not in live mode), reprocess
+        if (!this.state.cameraActive && this.state.originalImage) {
+          this.processImage();
+        }
+        // If frozen, reprocess the frozen frame
+        if (this.state.frozen && this.state.originalImage) {
+          this.processImage();
+        }
       });
     });
 
@@ -103,6 +129,206 @@ const App = {
       });
     }
   },
+
+  // ─── Camera Mode Toggle ───────────────────────────────────────────
+  toggleCameraMode: function() {
+    if (this.state.cameraActive || this.state.frozen) {
+      // Stop camera, switch to upload mode
+      this.stopCamera();
+      this.state.cameraMode = false;
+      this.elements.uploadBtnCap.textContent = '📷 CAM';
+      this.elements.shutterLabel.textContent = 'REFRESH';
+      this.resetCamera();
+    } else {
+      // Start camera
+      this.state.cameraMode = true;
+      this.elements.uploadBtnCap.textContent = '✕ EXIT';
+      this.startCamera();
+    }
+  },
+
+  startCamera: async function() {
+    const el = this.elements;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        },
+        audio: false
+      });
+
+      this.state.mediaStream = stream;
+      this.state.cameraActive = true;
+      this.state.frozen = false;
+
+      el.cameraVideo.srcObject = stream;
+      await el.cameraVideo.play();
+
+      // Hide drop zone, show canvas
+      el.dropZone.style.display = 'none';
+      if (el.canvasWrapper) {
+        el.canvasWrapper.classList.remove('hidden');
+        el.canvasWrapper.style.display = 'flex';
+      }
+
+      // Show style selector and enable save
+      el.styleSelector.style.display = 'flex';
+      el.downloadPng.removeAttribute('disabled');
+
+      // Light up indicators
+      el.ledReady.classList.add('glowing');
+      if (el.screenDisplay) {
+        el.screenDisplay.classList.add('camera-active');
+      }
+
+      // Update shutter label
+      el.shutterLabel.textContent = 'CAPTURE';
+
+      // Hide output image, show canvas directly for live mode
+      if (el.outputImage) {
+        el.outputImage.style.display = 'none';
+      }
+      el.outputCanvas.style.display = 'block';
+
+      // Start render loop
+      this.renderLoop();
+
+    } catch (err) {
+      console.error('[BitCam] Camera access failed:', err);
+      alert('Camera access denied or unavailable. Please allow camera permissions and try again.');
+      this.state.cameraMode = false;
+      el.uploadBtnCap.textContent = '📷 CAM';
+    }
+  },
+
+  stopCamera: function() {
+    // Cancel animation frame
+    if (this.state.animFrameId) {
+      cancelAnimationFrame(this.state.animFrameId);
+      this.state.animFrameId = null;
+    }
+
+    // Stop all media tracks
+    if (this.state.mediaStream) {
+      this.state.mediaStream.getTracks().forEach(track => track.stop());
+      this.state.mediaStream = null;
+    }
+
+    // Reset video element
+    const el = this.elements;
+    if (el.cameraVideo) {
+      el.cameraVideo.srcObject = null;
+    }
+
+    this.state.cameraActive = false;
+    this.state.frozen = false;
+  },
+
+  renderLoop: function() {
+    if (!this.state.cameraActive || this.state.frozen) return;
+
+    const el = this.elements;
+    const video = el.cameraVideo;
+
+    if (video.readyState >= video.HAVE_CURRENT_DATA) {
+      // Use lower resolution for live mode performance
+      const maxDimension = 480;
+      let w = video.videoWidth;
+      let h = video.videoHeight;
+
+      if (w > maxDimension || h > maxDimension) {
+        if (w > h) {
+          h = Math.round((h * maxDimension) / w);
+          w = maxDimension;
+        } else {
+          w = Math.round((w * maxDimension) / h);
+          h = maxDimension;
+        }
+      }
+
+      const canvas = el.outputCanvas;
+      canvas.width = w;
+      canvas.height = h;
+
+      // Draw video frame onto an offscreen canvas to use as source
+      if (!this._offscreenVideo) {
+        this._offscreenVideo = document.createElement('canvas');
+      }
+      this._offscreenVideo.width = w;
+      this._offscreenVideo.height = h;
+      const offCtx = this._offscreenVideo.getContext('2d');
+      offCtx.drawImage(video, 0, 0, w, h);
+
+      // Run the pixel art pipeline using the offscreen canvas as an image source
+      Filters.apply6thGenPipeline(
+        this._offscreenVideo,
+        canvas,
+        this.state.activePreset,
+        this.state.poly,
+        this.state.light,
+        this.state.noise
+      );
+    }
+
+    this.state.animFrameId = requestAnimationFrame(() => this.renderLoop());
+  },
+
+  captureSnapshot: function() {
+    const el = this.elements;
+    this.state.frozen = true;
+
+    // Cancel render loop
+    if (this.state.animFrameId) {
+      cancelAnimationFrame(this.state.animFrameId);
+      this.state.animFrameId = null;
+    }
+
+    // Store the current canvas as the "original image" for style switching
+    const snapshotImg = new Image();
+    snapshotImg.onload = () => {
+      this.state.originalImage = snapshotImg;
+    };
+    snapshotImg.src = el.outputCanvas.toDataURL('image/png');
+
+    // Copy canvas to output image for long-press save
+    if (el.outputImage) {
+      el.outputImage.src = el.outputCanvas.toDataURL('image/png');
+      el.outputImage.style.display = 'block';
+      if (this.state.activePreset === 'survival') {
+        el.outputImage.style.filter = 'contrast(1.15) saturate(1.05)';
+      } else {
+        el.outputImage.style.filter = 'contrast(1.12) saturate(0.98)';
+      }
+    }
+    el.outputCanvas.style.display = 'none';
+
+    // Update UI
+    el.shutterLabel.textContent = 'RESUME';
+    el.ledReady.classList.add('glowing');
+  },
+
+  resumeLive: function() {
+    const el = this.elements;
+    this.state.frozen = false;
+    this.state.originalImage = null;
+
+    // Hide output image, show canvas
+    if (el.outputImage) {
+      el.outputImage.style.display = 'none';
+    }
+    el.outputCanvas.style.display = 'block';
+
+    // Update UI
+    el.shutterLabel.textContent = 'CAPTURE';
+
+    // Restart render loop
+    this.renderLoop();
+  },
+
+  // ─── Standard Initialization ──────────────────────────────────────
 
   initHUD: function() {
     const casingDate = document.getElementById('casing-date');
@@ -187,6 +413,7 @@ const App = {
   },
 
   resetCamera: function() {
+    this.stopCamera();
     this.state.originalImage = null;
     this.state.width = 0;
     this.state.height = 0;
@@ -212,6 +439,7 @@ const App = {
 
     // Clear canvas
     const canvas = this.elements.outputCanvas;
+    canvas.style.display = 'none';
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
@@ -222,7 +450,7 @@ const App = {
     }
   },
 
-  // Image File Handling
+  // ─── Image File Handling ──────────────────────────────────────────
   handleFileSelect: function(e) {
     if (e.target.files && e.target.files.length > 0) {
       this.loadImageFromFile(e.target.files[0]);
@@ -337,8 +565,8 @@ const App = {
 
     this.processTimeout = setTimeout(() => {
       const maxDimension = 900;
-      let w = img.naturalWidth;
-      let h = img.naturalHeight;
+      let w = img.naturalWidth || img.width;
+      let h = img.naturalHeight || img.height;
 
       if (w > maxDimension || h > maxDimension) {
         if (w > h) {
@@ -383,11 +611,27 @@ const App = {
 
   // Export & Download Capabilities
   downloadPNG: function() {
+    // In live mode (not frozen), capture current frame first
+    if (this.state.cameraActive && !this.state.frozen) {
+      this.captureSnapshot();
+    }
+
     const img = this.elements.outputImage;
-    if (!img || !img.src) return;
+    if (!img || !img.src) {
+      // Fallback: export canvas directly
+      const canvas = this.elements.outputCanvas;
+      if (!canvas) return;
+      const link = document.createElement('a');
+      link.download = `bitcam_${this.state.activePreset}_${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
 
     const link = document.createElement('a');
-    link.download = `pixelart_${this.state.activePreset}_${Date.now()}.png`;
+    link.download = `bitcam_${this.state.activePreset}_${Date.now()}.png`;
     link.href = img.src;
     document.body.appendChild(link);
     link.click();

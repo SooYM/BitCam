@@ -68,13 +68,7 @@
           <span class="hud-item mode-label">● ACTIVE</span>
         </div>
  
-        <div class="lcd-hud-center">
-          <div class="crosshair-bracket left-top"></div>
-          <div class="crosshair-bracket right-top"></div>
-          <div class="crosshair-center">+</div>
-          <div class="crosshair-bracket left-bottom"></div>
-          <div class="crosshair-bracket right-bottom"></div>
-        </div>
+
  
         <div class="lcd-hud lcd-hud-bottom">
           <span class="hud-item quality-label">HQ 16b</span>
@@ -113,6 +107,9 @@
           <div class="no-photo-message">NO PHOTO LOADED</div>
         </div>
 
+        <!-- Hidden video element for live camera stream -->
+        <video id="camera-video" playsinline autoplay muted style="display: none;"></video>
+
         <!-- Live Viewport Canvas Wrapper -->
         <div id="canvas-wrapper" class="canvas-wrapper hidden">
           <!-- Processed Low Poly Canvas (hidden offscreen) -->
@@ -133,19 +130,19 @@
 
     <!-- Camera Physical Controls Panel (3-button layout) -->
     <footer class="camera-controls-panel">
-      <!-- Left: Load Button -->
-      <button id="upload-btn" class="btn btn-metal" title="Load Image from Files">
-        <span class="btn-cap">📂 LOAD</span>
+      <!-- Left: Camera / Load Toggle Button -->
+      <button id="upload-btn" class="btn btn-metal" title="Toggle Camera / Load Image">
+        <span id="upload-btn-cap" class="btn-cap">📷 CAM</span>
       </button>
 
-      <!-- Center: Shutter trigger serving as Refresh -->
+      <!-- Center: Shutter trigger (Capture in live mode / Refresh in photo mode) -->
       <div class="control-column-center">
         <div class="shutter-bezel">
-          <button id="shutter-trigger" class="btn btn-shutter" title="Refresh/Reload Camera">
+          <button id="shutter-trigger" class="btn btn-shutter" title="Capture / Refresh">
             <span class="shutter-glow"></span>
           </button>
         </div>
-        <span class="shutter-label">REFRESH</span>
+        <span id="shutter-label" class="shutter-label">REFRESH</span>
       </div>
 
       <!-- Right: Save Button -->
