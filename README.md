@@ -57,30 +57,9 @@ The project has zero build chains, package managers, or bundlers:
 
 ## 🚀 Getting Started
 
-### Deploy to GitHub Pages
-1. Initialize git and commit the files:
-   ```bash
-   git init
-   git add .
-   git commit -m "feat: initial release of Retro 3D Camera"
-   ```
-2. Link your GitHub repository:
-   ```bash
-   git remote add origin https://github.com/SooYM/VicePoly.git
-   ```
-3. Push to GitHub:
-   ```bash
-   git branch -M main
-   ```
-   ```bash
-   git push -u origin main
-   ```
-4. On GitHub, go to your repository **Settings** -> **Pages**.
-5. Set the Source to **Deploy from a branch**, select `main` (root folder), and click **Save**.
-6. Within a minute, your retro camera will be live at your GitHub Pages link:
-   👉 **[https://SooYM.github.io/VicePoly/](https://SooYM.github.io/VicePoly/)**
-   
-   Once loaded on your mobile phone (iOS Safari or Android Chrome), tap **"Add to Home Screen"** to run it full-screen as a standalone Progressive Web App (PWA).
+Use this GitHub Pages link: 👉 **[https://SooYM.github.io/VicePoly/](https://SooYM.github.io/VicePoly/)**
+
+Once loaded on your mobile phone (iOS Safari or Android Chrome), tap **"Add to Home Screen"** to run it full-screen as a standalone Progressive Web App (PWA).
 
 ---
 
