@@ -684,4 +684,163 @@ body {
   z-index: 10;
 }
 
+/* Y2K Settings Panel HUD Overlay inside LCD screen */
+.settings-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 170px;
+  background: rgba(4, 8, 6, 0.88);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border-left: 2px solid var(--lcd-hud-color);
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 14px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--lcd-hud-color) transparent;
+}
+
+.settings-panel::-webkit-scrollbar {
+  width: 4px;
+}
+.settings-panel::-webkit-scrollbar-thumb {
+  background: var(--lcd-hud-color);
+  border-radius: 2px;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-title {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: var(--lcd-hud-color);
+  text-shadow: var(--lcd-hud-glow);
+  font-weight: bold;
+  border-bottom: 1px dashed rgba(0, 255, 128, 0.4);
+  padding-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+
+.preset-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+
+.btn-preset {
+  background: transparent;
+  border: 1px solid var(--lcd-hud-color);
+  color: var(--lcd-hud-color);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  padding: 4px 2px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.15s ease;
+  text-align: center;
+  box-shadow: 0 0 2px rgba(0, 255, 128, 0.15);
+}
+
+.btn-preset:hover {
+  background: rgba(0, 255, 128, 0.15);
+}
+
+.btn-preset.active {
+  background: var(--lcd-hud-color);
+  color: #040405;
+  font-weight: bold;
+  box-shadow: var(--lcd-hud-glow);
+}
+
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--lcd-hud-color);
+  text-shadow: var(--lcd-hud-glow);
+}
+
+.slider-label {
+  font-weight: bold;
+}
+
+.slider-value {
+  opacity: 0.85;
+}
+
+/* Custom retro sliders */
+.retro-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  background: #0d2015;
+  height: 4px;
+  border: 1px solid var(--lcd-hud-color);
+  outline: none;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.retro-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  background: var(--lcd-hud-color);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 5px var(--lcd-hud-color);
+  border: 1px solid #fff;
+}
+
+.retro-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: var(--lcd-hud-color);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 5px var(--lcd-hud-color);
+  border: 1px solid #fff;
+}
+
+/* Responsive bottom drawer layout on mobile screens */
+@media (max-width: 480px) {
+  .settings-panel {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 120px;
+    border-left: none;
+    border-top: 2px solid var(--lcd-hud-color);
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 10px;
+    gap: 15px;
+  }
+  
+  .settings-section {
+    flex-shrink: 0;
+    width: 130px;
+    justify-content: center;
+  }
+  
+  .settings-section:first-child {
+    width: 155px;
+  }
+}
+
+
 

@@ -11,12 +11,12 @@ const Sobel = {
    * @param {ImageData} imageData - The canvas image data.
    * @returns {Array<Object>} List of regions with vertices and color.
    */
-  extractPoints: function(imageData) {
+  extractPoints: function(imageData, scaleWidth) {
+    if (!scaleWidth) scaleWidth = 120;
     const originalWidth = imageData.width;
     const originalHeight = imageData.height;
 
     // 1. Create a downscaled temporary canvas to eliminate high-frequency details (textures, noise)
-    const scaleWidth = 150; 
     const scaleHeight = Math.round((originalHeight * scaleWidth) / originalWidth);
 
     const tempCanvas = document.createElement('canvas');

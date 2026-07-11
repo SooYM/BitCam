@@ -5,7 +5,19 @@ const App = {
   state: {
     originalImage: null,
     width: 0,
-    height: 0
+    height: 0,
+    activePreset: 'vice-city',
+    poly: 120,
+    light: 55,
+    noise: 4
+  },
+
+  // Era Preset Defaults
+  presets: {
+    'vice-city': { poly: 120, light: 55, noise: 4 },
+    'san-andreas': { poly: 165, light: 65, noise: 2 },
+    'ps2': { poly: 130, light: 50, noise: 0 },
+    'ps1': { poly: 80, light: 40, noise: 9 }
   },
 
   // DOM Elements
@@ -37,6 +49,16 @@ const App = {
     el.loadingOverlay = document.getElementById('loading-overlay');
     el.screenDisplay = document.getElementById('screen-display');
 
+    // Art Direction HUD Elements
+    el.settingsPanel = document.getElementById('settings-panel');
+    el.sliderPoly = document.getElementById('slider-poly');
+    el.sliderLight = document.getElementById('slider-light');
+    el.sliderNoise = document.getElementById('slider-noise');
+    el.presetBtns = document.querySelectorAll('.btn-preset');
+    el.valPoly = document.getElementById('val-poly');
+    el.valLight = document.getElementById('val-light');
+    el.valNoise = document.getElementById('val-noise');
+
     // PWA elements
     el.pwaPrompt = document.getElementById('pwa-prompt');
     el.pwaPromptText = document.getElementById('pwa-prompt-text');
@@ -61,6 +83,58 @@ const App = {
 
     // Save image render
     el.downloadPng.addEventListener('click', () => this.downloadPNG());
+
+    // Sliders Real-time input listeners
+    el.sliderPoly.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value);
+      this.state.poly = val;
+      el.valPoly.textContent = val < 100 ? 'LOW' : (val > 145 ? 'HIGH' : 'MID');
+      this.processImage();
+    });
+
+    el.sliderLight.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value);
+      this.state.light = val;
+      el.valLight.textContent = val + '%';
+      this.processImage();
+    });
+
+    el.sliderNoise.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value);
+      this.state.noise = val;
+      el.valNoise.textContent = val === 0 ? 'OFF' : (val < 6 ? 'LOW' : (val < 11 ? 'MID' : 'HIGH'));
+      this.processImage();
+    });
+
+    // Preset Button Click Handlers
+    el.presetBtns.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        el.presetBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        const presetName = btn.getAttribute('data-preset');
+        this.state.activePreset = presetName;
+
+        const config = this.presets[presetName];
+        if (config) {
+          this.state.poly = config.poly;
+          this.state.light = config.light;
+          this.state.noise = config.noise;
+
+          // Sync inputs
+          el.sliderPoly.value = config.poly;
+          el.sliderLight.value = config.light;
+          el.sliderNoise.value = config.noise;
+
+          // Sync labels
+          el.valPoly.textContent = config.poly < 100 ? 'LOW' : (config.poly > 145 ? 'HIGH' : 'MID');
+          el.valLight.textContent = config.light + '%';
+          el.valNoise.textContent = config.noise === 0 ? 'OFF' : (config.noise < 6 ? 'LOW' : (config.noise < 11 ? 'MID' : 'HIGH'));
+
+          this.processImage();
+        }
+      });
+    });
 
     // PWA close handler
     if (el.pwaCloseBtn) {
@@ -174,6 +248,7 @@ const App = {
     this.elements.canvasWrapper.classList.add('hidden');
     this.elements.downloadPng.setAttribute('disabled', 'true');
     this.elements.ledReady.classList.remove('glowing');
+    this.elements.settingsPanel.style.display = 'none';
     if (this.elements.screenDisplay) {
       this.elements.screenDisplay.classList.remove('camera-active');
     }
@@ -212,14 +287,12 @@ const App = {
 
     if (isHEIC && typeof HeicTo !== 'undefined') {
       this.showLoading(true);
-      // Update loader text to notify user of HEIC conversion
       const loadingTextEl = document.querySelector('.loading-text');
       const originalText = loadingTextEl ? loadingTextEl.textContent : 'RENDERING 3D MESH...';
       if (loadingTextEl) {
         loadingTextEl.textContent = 'CONVERTING HEIC PHOTO...';
       }
 
-      // Convert HEIC Blob to JPEG Blob using modern HeicTo
       HeicTo({
         blob: file,
         type: 'image/jpeg',
@@ -252,7 +325,6 @@ const App = {
   loadImageBlob: function(blob) {
     this.showLoading(true);
 
-    // Revoke previous object URL if any to free memory
     if (this.state.imageUrl) {
       URL.revokeObjectURL(this.state.imageUrl);
     }
@@ -269,6 +341,7 @@ const App = {
         this.elements.canvasWrapper.style.display = 'flex';
       }
       this.elements.downloadPng.removeAttribute('disabled');
+      this.elements.settingsPanel.style.display = 'flex';
       
       // Turn on green "READY" status light
       this.elements.ledReady.classList.add('glowing');
@@ -301,8 +374,12 @@ const App = {
 
     this.showLoading(true);
 
-    setTimeout(() => {
-      // Determine optimal display proportions matching the viewport constraints
+    // Debounce slightly to make slider tracking feel fluid and fast
+    if (this.processTimeout) {
+      clearTimeout(this.processTimeout);
+    }
+
+    this.processTimeout = setTimeout(() => {
       const maxDimension = 900;
       let w = img.naturalWidth;
       let h = img.naturalHeight;
@@ -320,22 +397,27 @@ const App = {
       this.state.width = w;
       this.state.height = h;
 
-      // Set display canvas size
       const canvas = this.elements.outputCanvas;
       canvas.width = w;
       canvas.height = h;
 
-      // Run the 6th-Gen Console emulation pipeline
-      Filters.apply6thGenPipeline(img, canvas);
+      // Run the 6th-Gen Console emulation pipeline with live Art Direction parameters
+      Filters.apply6thGenPipeline(
+        img, 
+        canvas, 
+        this.state.activePreset, 
+        this.state.poly, 
+        this.state.light, 
+        this.state.noise
+      );
 
-      // Export canvas buffer as real image to allow native touch-and-hold saves
       if (this.elements.outputImage) {
         this.elements.outputImage.src = canvas.toDataURL('image/png');
         this.elements.outputImage.style.display = 'block';
       }
 
       this.showLoading(false);
-    }, 25);
+    }, 45);
   },
 
   // Export & Download Capabilities
@@ -344,7 +426,7 @@ const App = {
     if (!img || !img.src) return;
 
     const link = document.createElement('a');
-    link.download = `vicepoly_render_${Date.now()}.png`;
+    link.download = `vicepoly_${this.state.activePreset}_${Date.now()}.png`;
     link.href = img.src;
     document.body.appendChild(link);
     link.click();
