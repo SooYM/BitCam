@@ -198,11 +198,48 @@ const App = {
   },
 
   loadImageFromFile: function(file) {
-    if (!file.type.match('image.*')) {
-      alert('Please upload an image file.');
-      return;
-    }
+    const isHEIC = file.name.toLowerCase().endsWith('.heic') || file.type === 'image/heic' || file.type === 'image/heif';
 
+    if (isHEIC) {
+      this.showLoading(true);
+      // Update loader text to notify user of HEIC conversion
+      const loadingTextEl = document.querySelector('.loading-text');
+      const originalText = loadingTextEl ? loadingTextEl.textContent : 'RENDERING 3D MESH...';
+      if (loadingTextEl) {
+        loadingTextEl.textContent = 'CONVERTING HEIC PHOTO...';
+      }
+
+      // Convert HEIC Blob to JPEG Blob using heic2any
+      heic2any({
+        blob: file,
+        toType: 'image/jpeg',
+        quality: 0.85
+      })
+      .then((convertedBlob) => {
+        if (loadingTextEl) {
+          loadingTextEl.textContent = originalText;
+        }
+        const blobToLoad = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+        this.loadImageBlob(blobToLoad);
+      })
+      .catch((err) => {
+        this.showLoading(false);
+        if (loadingTextEl) {
+          loadingTextEl.textContent = originalText;
+        }
+        console.error("HEIC conversion failed:", err);
+        alert('Failed to process HEIC file. Please try uploading a standard JPEG or PNG photo.');
+      });
+    } else {
+      if (!file.type.match('image.*')) {
+        alert('Please upload an image file.');
+        return;
+      }
+      this.loadImageBlob(file);
+    }
+  },
+
+  loadImageBlob: function(blob) {
     this.showLoading(true);
 
     // Revoke previous object URL if any to free memory
@@ -210,7 +247,7 @@ const App = {
       URL.revokeObjectURL(this.state.imageUrl);
     }
 
-    const objectUrl = URL.createObjectURL(file);
+    const objectUrl = URL.createObjectURL(blob);
     this.state.imageUrl = objectUrl;
 
     const img = new Image();
