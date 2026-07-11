@@ -1,0 +1,569 @@
+/* css/style.css */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&family=Press+Start+2P&family=Share+Tech+Mono&display=swap');
+
+:root {
+  --metallic-bg: linear-gradient(135deg, #d8dcd6 0%, #a4aba0 40%, #7e8578 80%, #5d6357 100%);
+  --metallic-border: #4a4f46;
+  --lcd-backlight: #0d1a18;
+  --lcd-hud-color: #39ff14; /* Neon green indicator */
+  --lcd-hud-glow: 0 0 6px rgba(57, 255, 20, 0.7);
+  
+  --chrome-light: #ffffff;
+  --chrome-dark: #3a3a3a;
+  
+  --gel-red-normal: radial-gradient(circle at 50% 30%, #ff5252 0%, #d50000 70%, #9a0000 100%);
+  --gel-red-active: radial-gradient(circle at 50% 70%, #d50000 0%, #9a0000 70%, #5d0000 100%);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+body {
+  font-family: 'Montserrat', sans-serif;
+  background: #1a1a24;
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(0, 0, 0, 0.4) 0%, transparent 90%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.02) 0px, rgba(255, 255, 255, 0.02) 2px, transparent 2px, transparent 4px);
+  color: #fff;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+  overflow: hidden;
+}
+
+/* 2000s Handheld Camera Body */
+.camera-body {
+  width: 100%;
+  max-width: 440px;
+  height: 94vh;
+  max-height: 800px;
+  background: var(--metallic-bg);
+  border: 4px solid var(--metallic-border);
+  border-radius: 36px;
+  box-shadow: 
+    inset 3px 3px 0 rgba(255, 255, 255, 0.5), 
+    inset -3px -3px 0 rgba(0, 0, 0, 0.4),
+    0 25px 60px rgba(0, 0, 0, 0.85);
+  display: flex;
+  flex-direction: column;
+  padding: 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+.camera-body::before {
+  /* Translucent cyber-grip texture strip on the right edge */
+  content: '';
+  position: absolute;
+  top: 15px;
+  bottom: 15px;
+  right: 12px;
+  width: 16px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  box-shadow: inset 1px 1px 3px rgba(0,0,0,0.5), 1px 1px 0 rgba(255,255,255,0.2);
+}
+
+/* Top Panel Bar (Power indicators) */
+.camera-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  padding: 0 4px;
+}
+
+.brand-panel {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+
+.brand-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  color: #222;
+  text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.brand-model {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #fff;
+  background: #333;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-top: 2px;
+  align-self: flex-start;
+  box-shadow: inset 1px 1px 2px rgba(0,0,0,0.6);
+}
+
+.status-led-group {
+  display: flex;
+  gap: 12px;
+}
+
+.status-led-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.led {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #3a3f35;
+  border: 1px solid #1a1c18;
+  box-shadow: inset 1px 1px 2px rgba(0,0,0,0.6);
+}
+
+.led-power.glowing {
+  background: #ff3b30;
+  box-shadow: 0 0 8px #ff3b30, inset 1px 1px 1px rgba(255,255,255,0.6);
+  animation: pulse 2.5s infinite;
+}
+
+.led-ready.glowing {
+  background: #39ff14;
+  box-shadow: 0 0 8px #39ff14, inset 1px 1px 1px rgba(255,255,255,0.6);
+}
+
+.led-label {
+  font-size: 8px;
+  font-weight: 900;
+  color: #2a2a2a;
+}
+
+/* Recessed Viewfinder Screen Frame */
+.camera-screen-bevel {
+  flex: 1;
+  background: #1e1e1e;
+  border: 6px solid #2d302c;
+  border-radius: 18px;
+  box-shadow: 
+    inset -2px -2px 3px rgba(255,255,255,0.3), 
+    inset 2px 2px 4px rgba(0,0,0,0.7),
+    1px 1px 0 rgba(255,255,255,0.3);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  margin-bottom: 18px;
+}
+
+/* Diagonal glossy glare overlay to look like real glass */
+.camera-screen-glare {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.08) 35%, transparent 35.1%, transparent 100%);
+  pointer-events: none;
+  z-index: 8;
+}
+
+/* Inner LCD Screen */
+.camera-screen-display {
+  flex: 1;
+  background: var(--lcd-backlight);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Scanline and grid overlays for LCD backlight */
+.camera-screen-display::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.15) 0px, rgba(0, 0, 0, 0.15) 1px, transparent 1px, transparent 2.5px);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* Camera LCD HUD Indicators */
+.lcd-hud {
+  position: absolute;
+  left: 0;
+  right: 0;
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  z-index: 6;
+  font-family: 'Share Tech Mono', monospace;
+  color: var(--lcd-hud-color);
+  text-shadow: var(--lcd-hud-glow);
+  font-size: 11px;
+}
+
+.lcd-hud-top {
+  top: 0;
+}
+
+.lcd-hud-bottom {
+  bottom: 0;
+}
+
+/* Center Viewfinder Crosshairs */
+.lcd-hud-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  display: none; /* Hide by default to prevent overlapping lens/drop-zone */
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 6;
+  color: var(--lcd-hud-color);
+  text-shadow: var(--lcd-hud-glow);
+}
+
+.camera-active .lcd-hud-center {
+  display: flex; /* Only show crosshairs when camera viewport is active */
+}
+
+.crosshair-center {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 20px;
+}
+
+.crosshair-bracket {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--lcd-hud-color);
+  box-shadow: var(--lcd-hud-glow);
+}
+
+.left-top { top: 0; left: 0; border-right: none; border-bottom: none; }
+.right-top { top: 0; right: 0; border-left: none; border-bottom: none; }
+.left-bottom { bottom: 0; left: 0; border-right: none; border-top: none; }
+.right-bottom { bottom: 0; right: 0; border-left: none; border-top: none; }
+
+/* LCD Drop Zone (Uploader Screen) */
+.drop-zone {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 7;
+  padding: 20px;
+}
+
+.drop-zone.dragover {
+  background: rgba(57, 255, 20, 0.08);
+}
+
+/* Skeuomorphic Glass Camera Lens Graphic */
+.camera-lens-graphic {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #1f232b 0%, #0d0f13 70%, #050608 100%);
+  border: 6px solid #333931;
+  box-shadow: 
+    inset 2px 2px 5px rgba(255,255,255,0.1),
+    inset -2px -2px 5px rgba(0,0,0,0.8),
+    0 4px 15px rgba(0, 0, 0, 0.6);
+  margin-bottom: 22px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.camera-lens-graphic::before {
+  /* Lens reflection shimmer */
+  content: '';
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(0, 242, 254, 0.25) 0%, rgba(254, 1, 154, 0.1) 40%, transparent 70%);
+}
+
+.lens-reflection {
+  position: absolute;
+  top: 16px;
+  left: 20px;
+  width: 16px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.55);
+  border-radius: 50%;
+  transform: rotate(-35deg);
+}
+
+.drop-zone h3 {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 13px;
+  color: var(--lcd-hud-color);
+  text-shadow: var(--lcd-hud-glow);
+  margin-bottom: 24px;
+  letter-spacing: 1px;
+}
+
+.upload-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 180px;
+}
+
+/* Canvas Viewport */
+.canvas-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 4;
+}
+
+#output-canvas {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Physical Hardware Control Keys Panel */
+.camera-controls-panel {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr 1fr;
+  align-items: center;
+  padding: 4px 0;
+  z-index: 10;
+}
+
+.control-column-left,
+.control-column-right {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.control-column-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* Tactile 3D Metallic Buttons styling */
+.btn-metal {
+  background: linear-gradient(180deg, #f2f2f2 0%, #b8b8b8 45%, #8c8c8c 80%, #6e6e6e 100%);
+  border: 2px solid #5a5f56;
+  border-radius: 10px;
+  color: #1e1e1e;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 8px 10px;
+  cursor: pointer;
+  box-shadow: 
+    inset 1px 1px 1px #fff,
+    1px 2px 3px rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.05s ease, box-shadow 0.05s ease;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0; /* Prevent squishing on shorter devices */
+}
+
+.btn-metal:active:not(:disabled) {
+  transform: translateY(1.5px);
+  box-shadow: 
+    inset 2px 2px 4px rgba(0,0,0,0.6),
+    0px 0.5px 1px rgba(0,0,0,0.2);
+}
+
+.btn-metal:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(1);
+}
+
+.btn-metal-alt,
+.btn-shutter-alt {
+  font-family: 'Share Tech Mono', monospace;
+  border: 2px solid var(--lcd-hud-color);
+  background: transparent;
+  color: var(--lcd-hud-color);
+  box-shadow: var(--lcd-hud-glow);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.btn-shutter-alt {
+  background: rgba(57, 255, 20, 0.05);
+}
+
+.btn-shutter-alt:active,
+.btn-metal-alt:active {
+  transform: scale(0.96);
+  background: rgba(57, 255, 20, 0.15);
+}
+
+/* Large Shutter Button container */
+.shutter-bezel {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #444 0%, #111 60%, #555 100%);
+  border: 4px solid var(--metallic-border);
+  box-shadow: 
+    inset 1px 1px 2px rgba(255,255,255,0.4),
+    inset -1px -1px 2px rgba(0,0,0,0.8),
+    0 4px 8px rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0; /* Prevent bezel squishing on shorter viewports */
+}
+
+.btn-shutter {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 1px solid #700;
+  background: var(--gel-red-normal);
+  box-shadow: 
+    inset 0 3px 5px rgba(255,255,255,0.7),
+    inset 0 -3px 5px rgba(0,0,0,0.5),
+    0 3px 6px rgba(0,0,0,0.6);
+  cursor: pointer;
+  position: relative;
+  outline: none;
+  transition: transform 0.05s ease, box-shadow 0.05s ease;
+}
+
+.btn-shutter:active {
+  background: var(--gel-red-active);
+  box-shadow: 
+    inset 0 3px 8px rgba(0,0,0,0.8),
+    0 1px 2px rgba(0,0,0,0.3);
+  transform: scale(0.96);
+}
+
+.shutter-glow {
+  /* Aqua gel lens highlight circle */
+  position: absolute;
+  top: 4px;
+  left: 10px;
+  right: 10px;
+  height: 16px;
+  background: linear-gradient(to bottom, rgba(255,255,255,0.65) 0%, rgba(255,255,255,0) 100%);
+  border-radius: 40% 40% 15% 15%;
+}
+
+.shutter-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  font-weight: 900;
+  color: #222;
+  letter-spacing: 0.5px;
+}
+
+/* Spinner Computation Overlay */
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(13, 26, 24, 0.9);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.loading-overlay.hidden {
+  display: none;
+}
+
+.spinner-poly {
+  width: 50px;
+  height: 50px;
+  border-left: 3px solid var(--lcd-hud-color);
+  border-right: 3px solid var(--lcd-hud-color);
+  border-bottom: 3px solid transparent;
+  border-top: 3px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s infinite linear;
+  box-shadow: var(--lcd-hud-glow);
+}
+
+.loading-text {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: var(--lcd-hud-color);
+  text-shadow: var(--lcd-hud-glow);
+  animation: pulse 1.5s infinite;
+}
+
+/* Keyframes */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes spinReversed {
+  0% { transform: rotate(360deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+@keyframes glowPulse {
+  0% { box-shadow: 0 0 10px rgba(57, 255, 20, 0.4); }
+  100% { box-shadow: 0 0 20px rgba(57, 255, 20, 0.7); }
+}
+
+/* Extra Mobile / Aspect Ratios Overrides */
+@media (max-height: 600px) {
+  .camera-body {
+    padding: 10px;
+  }
+  .camera-screen-bevel {
+    margin-bottom: 10px;
+  }
+  .camera-lens-graphic {
+    width: 70px;
+    height: 70px;
+    margin-bottom: 12px;
+  }
+  .drop-zone h3 {
+    margin-bottom: 12px;
+  }
+}

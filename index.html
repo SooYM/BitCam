@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Vance 3D-CAM | Retro 3D Graphics Camera</title>
+  
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="A 2000s skeuomorphic toy camera that renders photos into retro low-poly 3D graphics in real-time. Zero-configuration, pure browser execution.">
+  <meta name="keywords" content="retro cam, 3d camera, low poly, image converter, 2000s aesthetic, skeuomorphic web, toy camera, triangulation">
+  <meta name="author" content="Antigravity">
+  
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/style.css">
+  
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='40' fill='%23ff3b30' stroke='%23ffffff' stroke-width='6'/%3E%3Ccircle cx='50' cy='50' r='15' fill='%23111116'/%3E%3C/svg%3E">
+</head>
+<body>
+
+  <!-- Main Camera Handheld Housing -->
+  <main class="camera-body">
+    
+    <!-- Camera Top Panel (Grip, Brand, Power LED) -->
+    <header class="camera-top-bar">
+      <div class="brand-panel">
+        <span class="brand-name">VANCE</span>
+        <span class="brand-model">3D-CAM</span>
+      </div>
+      <div class="status-led-group">
+        <div class="status-led-item">
+          <div class="led led-power glowing"></div>
+          <span class="led-label">POWER</span>
+        </div>
+        <div class="status-led-item">
+          <div id="led-ready" class="led led-ready"></div>
+          <span class="led-label">READY</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Camera Viewfinder LCD Screen -->
+    <section class="camera-screen-bevel">
+      <div class="camera-screen-glare"></div>
+      
+      <!-- LCD Screen Display Area -->
+      <div id="screen-display" class="camera-screen-display">
+        
+        <!-- Retro Camera LCD HUD Overlays -->
+        <div class="lcd-hud lcd-hud-top">
+          <span class="hud-item mode-label">● 3D-CAM</span>
+          <span class="hud-item battery-label">[▰▰▰] 100%</span>
+        </div>
+
+        <div class="lcd-hud-center">
+          <div class="crosshair-bracket left-top"></div>
+          <div class="crosshair-bracket right-top"></div>
+          <div class="crosshair-center">+</div>
+          <div class="crosshair-bracket left-bottom"></div>
+          <div class="crosshair-bracket right-bottom"></div>
+        </div>
+
+        <div class="lcd-hud lcd-hud-bottom">
+          <span id="lcd-timestamp" class="hud-item time-label">JUL.11.1986</span>
+          <span class="hud-item quality-label">HQ 24b</span>
+        </div>
+
+        <!-- File Drop & Select Zone (Visible when no image is loaded) -->
+        <div id="drop-zone" class="drop-zone">
+          <div class="camera-lens-graphic">
+            <div class="lens-reflection"></div>
+          </div>
+          <h3>LOAD RETRO CAM</h3>
+          
+          <div class="upload-buttons">
+            <button id="upload-btn-fallback" class="btn btn-shutter-alt" onclick="document.getElementById('file-input').click()">📂 SELECT IMAGE</button>
+            <button id="camera-btn-fallback" class="btn btn-metal-alt" onclick="document.getElementById('camera-input').click()">📸 TAKE PHOTO</button>
+          </div>
+        </div>
+
+        <!-- Live Viewport Canvas Wrapper -->
+        <div id="canvas-wrapper" class="canvas-wrapper hidden">
+          <!-- Processed Low Poly Canvas -->
+          <canvas id="output-canvas"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Camera Physical Controls Panel (Skeuomorphic tactile buttons) -->
+    <footer class="camera-controls-panel">
+      <!-- Left utility buttons -->
+      <div class="control-column-left">
+        <button id="upload-btn" class="btn btn-metal" title="Load Image from Files">
+          <span class="btn-cap">📂 LOAD</span>
+        </button>
+        <button id="camera-btn" class="btn btn-metal" title="Capture from Camera">
+          <span class="btn-cap">📸 CAM</span>
+        </button>
+      </div>
+
+      <!-- Large Glossy Shutter Trigger Button (Center) -->
+      <div class="control-column-center">
+        <div class="shutter-bezel">
+          <button id="shutter-trigger" class="btn btn-shutter" title="Upload / Capture Shutter Button" onclick="document.getElementById('file-input').click()">
+            <span class="shutter-glow"></span>
+          </button>
+        </div>
+        <span class="shutter-label">SHUTTER</span>
+      </div>
+
+      <!-- Right utility buttons -->
+      <div class="control-column-right">
+        <button id="download-png" class="btn btn-metal" title="Save Rendered Image" disabled>
+          <span class="btn-cap">💾 SAVE</span>
+        </button>
+        <button id="reset-btn" class="btn btn-metal" title="Reset Frame Alignment">
+          <span class="btn-cap">🔄 RESET</span>
+        </button>
+      </div>
+
+      <!-- Hidden file inputs -->
+      <input type="file" id="file-input" accept="image/*" class="hidden" style="display:none;">
+      <input type="file" id="camera-input" accept="image/*" capture="environment" class="hidden" style="display:none;">
+    </footer>
+
+  </main>
+
+  <!-- Heavy Computation Spinner Overlay -->
+  <div id="loading-overlay" class="loading-overlay hidden">
+    <div class="spinner-poly"></div>
+    <div class="loading-text">RENDERING 3D MESH...</div>
+  </div>
+
+  <!-- Application JS Modules -->
+  <script src="js/sobel.js"></script>
+  <script src="js/delaunay.js"></script>
+  <script src="js/filters.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
