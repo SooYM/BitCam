@@ -19,9 +19,19 @@ const Filters = {
     console.log(`[VicePoly Engine] Target display dimensions: ${displayW}x${displayH}`);
 
     // --- STAGE 2.1: Spatial Quantization (Nearest Downscaling) ---
-    // Downscale to NTSC standard resolution (320x240)
-    const lowResW = 320;
-    const lowResH = 240;
+    // Downscale to a higher VGA-equivalent resolution (640px max dimension)
+    // to emulate a high-poly late-era console look while preserving aspect ratio.
+    const targetMaxDim = 640; 
+    let lowResW, lowResH;
+    if (displayW > displayH) {
+      lowResW = targetMaxDim;
+      lowResH = Math.max(1, Math.round((displayH * targetMaxDim) / displayW));
+    } else {
+      lowResH = targetMaxDim;
+      lowResW = Math.max(1, Math.round((displayW * targetMaxDim) / displayH));
+    }
+
+    console.log(`[VicePoly Engine] Downscale buffer resolution: ${lowResW}x${lowResH}`);
 
     const lowResCanvas = document.createElement('canvas');
     lowResCanvas.width = lowResW;
@@ -33,19 +43,12 @@ const Filters = {
     lowResCtx.msImageSmoothingEnabled = false;
     lowResCtx.webkitImageSmoothingEnabled = false;
 
-    // Draw source image scaled to 320x240
+    // Draw source image scaled to low-res
     lowResCtx.drawImage(img, 0, 0, lowResW, lowResH);
 
     // Extract low-res pixel matrix
     const imgData = lowResCtx.getImageData(0, 0, lowResW, lowResH);
     const data = imgData.data;
-
-    // Sanity check low-res pixels
-    let lowResSum = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      lowResSum += data[i] + data[i+1] + data[i+2];
-    }
-    console.log(`[VicePoly Engine] Stage 2.1 Downscale - Pixel color sum: ${lowResSum}`);
 
     // --- STAGE 2.2: Structural Edge Hardening (Unsharp Mask) ---
     const originalPixels = new Uint8ClampedArray(data);
@@ -61,12 +64,6 @@ const Filters = {
         data[i + c] = Math.min(255, Math.max(0, Math.round(sharpVal)));
       }
     }
-
-    let sharpenSum = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      sharpenSum += data[i] + data[i+1] + data[i+2];
-    }
-    console.log(`[VicePoly Engine] Stage 2.2 Sharpen - Pixel color sum: ${sharpenSum}`);
 
     // --- STAGE 2.3: Textural Mipmap Simulation (Selective Blurring) ---
     const originalPixels2 = new Uint8ClampedArray(data);
@@ -92,12 +89,6 @@ const Filters = {
       }
     }
 
-    let mipmapSum = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      mipmapSum += data[i] + data[i+1] + data[i+2];
-    }
-    console.log(`[VicePoly Engine] Stage 2.3 Mipmap - Pixel color sum: ${mipmapSum}`);
-
     // --- STAGE 2.4 & 2.5: 16-Bit Color Space (RGB5A1) & Bayer 4x4 Dithering ---
     const bayerMatrix = [
       [ 0,  8,  2, 10],
@@ -121,63 +112,17 @@ const Filters = {
       }
     }
 
-    let ditherSum = 0;
-    for (let i = 0; i < data.length; i += 4) {
-      ditherSum += data[i] + data[i+1] + data[i+2];
-    }
-    console.log(`[VicePoly Engine] Stage 2.4/2.5 Dither - Pixel color sum: ${ditherSum}`);
-
     // Put image data back to the low-res canvas
     lowResCtx.putImageData(imgData, 0, 0);
 
-    // --- STAGE 2.6: CRT Analog Output & Scanline Emulation ---
+    // --- STAGE 2.6: CRT Analog Output & Upscaling ---
+    // (VHS scanlines, composite chroma bleeding, and film noise are removed as requested)
     destCtx.imageSmoothingEnabled = false;
     destCtx.msImageSmoothingEnabled = false;
     destCtx.webkitImageSmoothingEnabled = false;
     destCtx.drawImage(lowResCanvas, 0, 0, displayW, displayH);
-
-    const finalImgData = destCtx.getImageData(0, 0, displayW, displayH);
-    const finalData = finalImgData.data;
-
-    let upscaleSum = 0;
-    for (let i = 0; i < finalData.length; i += 4) {
-      upscaleSum += finalData[i] + finalData[i+1] + finalData[i+2];
-    }
-    console.log(`[VicePoly Engine] Stage 2.6 Upscale - Pixel color sum: ${upscaleSum}`);
-
-    // Apply chroma blur (analog composite cable YUV low-pass filter)
-    this.applyChromaBleed(finalData, displayW, displayH);
-
-    let chromaSum = 0;
-    for (let i = 0; i < finalData.length; i += 4) {
-      chromaSum += finalData[i] + finalData[i+1] + finalData[i+2];
-    }
-    console.log(`[VicePoly Engine] Stage 2.6 Chroma Bleed - Pixel color sum: ${chromaSum}`);
-
-    // Apply scanlines: odd rows (y = 2n + 1) attenuated by 38%
-    const attenuation = 0.62; 
-    for (let y = 0; y < displayH; y++) {
-      if (y % 2 === 1) {
-        for (let x = 0; x < displayW; x++) {
-          const i = (y * displayW + x) * 4;
-          finalData[i] = Math.round(finalData[i] * attenuation);
-          finalData[i + 1] = Math.round(finalData[i + 1] * attenuation);
-          finalData[i + 2] = Math.round(finalData[i + 2] * attenuation);
-        }
-      }
-    }
-
-    // Apply a light analog CRT film grain noise overlay
-    this.injectAnalogNoise(finalData, 0.05);
-
-    let finalSum = 0;
-    for (let i = 0; i < finalData.length; i += 4) {
-      finalSum += finalData[i] + finalData[i+1] + finalData[i+2];
-    }
-    console.log(`[VicePoly Engine] Stage 2.6 Final - Pixel color sum: ${finalSum}`);
-
-    // Put final composite buffer to display canvas
-    destCtx.putImageData(finalImgData, 0, 0);
+    
+    console.log("[VicePoly Engine] Graphics simulation complete.");
   },
 
   /**
@@ -213,78 +158,5 @@ const Filters = {
       }
     }
     return dest;
-  },
-
-  /**
-   * Emulates analog video chroma bleeding (YUV color space low-pass blur on U/V)
-   */
-  applyChromaBleed: function(pixels, w, h) {
-    const uChan = new Float32Array(w * h);
-    const vChan = new Float32Array(w * h);
-    const yChan = new Float32Array(w * h);
-
-    // Convert RGB to YUV
-    for (let i = 0; i < pixels.length; i += 4) {
-      const idx = i / 4;
-      const r = pixels[i];
-      const g = pixels[i + 1];
-      const b = pixels[i + 2];
-
-      yChan[idx] = 0.299 * r + 0.587 * g + 0.114 * b;
-      uChan[idx] = -0.168736 * r - 0.331264 * g + 0.5 * b + 128;
-      vChan[idx] = 0.5 * r - 0.418688 * g - 0.081312 * b + 128;
-    }
-
-    // 2. Perform 1D horizontal blur on U and V (kernel size 5: offset -2 to 2)
-    const uBlurred = new Float32Array(uChan.length);
-    const vBlurred = new Float32Array(vChan.length);
-
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < w; x++) {
-        const idx = y * w + x;
-        let uSum = 0, vSum = 0, count = 0;
-        
-        for (let k = -2; k <= 2; k++) {
-          const nx = x + k;
-          if (nx >= 0 && nx < w) {
-            const nidx = y * w + nx;
-            uSum += uChan[nidx];
-            vSum += vChan[nidx];
-            count++;
-          }
-        }
-        uBlurred[idx] = uSum / count;
-        vBlurred[idx] = vSum / count;
-      }
-    }
-
-    // 3. Convert YUV back to RGB (Luminance Y remains sharp!)
-    for (let i = 0; i < pixels.length; i += 4) {
-      const idx = i / 4;
-      const Y = yChan[idx];
-      const U = uBlurred[idx] - 128;
-      const V = vBlurred[idx] - 128;
-
-      const r = Y + 1.402 * V;
-      const g = Y - 0.344136 * U - 0.714136 * V;
-      const b = Y + 1.772 * U;
-
-      pixels[i] = Math.min(255, Math.max(0, Math.round(r)));
-      pixels[i + 1] = Math.min(255, Math.max(0, Math.round(g)));
-      pixels[i + 2] = Math.min(255, Math.max(0, Math.round(b)));
-    }
-  },
-
-  /**
-   * Inject high-frequency gritty noise to simulate analog TV output grain.
-   */
-  injectAnalogNoise: function(pixels, amount) {
-    for (let i = 0; i < pixels.length; i += 4) {
-      if (pixels[i + 3] === 0) continue;
-      const noise = (Math.random() - 0.5) * amount * 255;
-      pixels[i] = Math.min(255, Math.max(0, pixels[i] + noise));
-      pixels[i + 1] = Math.min(255, Math.max(0, pixels[i + 1] + noise));
-      pixels[i + 2] = Math.min(255, Math.max(0, pixels[i + 2] + noise));
-    }
   }
 };
