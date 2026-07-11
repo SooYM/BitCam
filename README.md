@@ -57,13 +57,6 @@ The project has zero build chains, package managers, or bundlers:
 
 ## 🚀 Getting Started
 
-### Run Locally
-You can run a local HTTP server in the directory to test the camera:
-```bash
-python3 -m http.server 8000
-```
-Then, open **`http://localhost:8000`** in your browser.
-
 ### Deploy to GitHub Pages
 1. Initialize git and commit the files:
    ```bash
