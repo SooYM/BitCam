@@ -204,30 +204,39 @@ const App = {
     }
 
     this.showLoading(true);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        this.state.originalImage = img;
-        this.elements.dropZone.style.display = 'none';
+
+    // Revoke previous object URL if any to free memory
+    if (this.state.imageUrl) {
+      URL.revokeObjectURL(this.state.imageUrl);
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    this.state.imageUrl = objectUrl;
+
+    const img = new Image();
+    img.onload = () => {
+      this.state.originalImage = img;
+      this.elements.dropZone.style.display = 'none';
+      if (this.elements.canvasWrapper) {
         this.elements.canvasWrapper.classList.remove('hidden');
-        this.elements.downloadPng.removeAttribute('disabled');
-        
-        // Turn on green "READY" status light
-        this.elements.ledReady.classList.add('glowing');
-        if (this.elements.screenDisplay) {
-          this.elements.screenDisplay.classList.add('camera-active');
-        }
-        
-        this.processImage();
-      };
-      img.onerror = () => {
-        this.showLoading(false);
-        alert('Error loading image file.');
-      };
-      img.src = event.target.result;
+        this.elements.canvasWrapper.style.display = 'flex';
+      }
+      this.elements.downloadPng.removeAttribute('disabled');
+      
+      // Turn on green "READY" status light
+      this.elements.ledReady.classList.add('glowing');
+      if (this.elements.screenDisplay) {
+        this.elements.screenDisplay.classList.add('camera-active');
+      }
+      
+      this.processImage();
     };
-    reader.readAsDataURL(file);
+    img.onerror = (err) => {
+      this.showLoading(false);
+      console.error("Image load failed:", err);
+      alert('Error loading image file. Please verify it is a valid JPEG, PNG, or WebP image.');
+    };
+    img.src = objectUrl;
   },
 
   showLoading: function(show) {
