@@ -1,7 +1,7 @@
-# CraftCam 📸
+# BitCam 📸
 > **A Skeuomorphic Retro Camera & Voxel Art Generator**
 
-CraftCam is a zero-configuration, single-page progressive web application (PWA) that transforms your photos into textured voxel block mosaics and nostalgic pixel art.
+BitCam is a zero-configuration, single-page progressive web application (PWA) that transforms your photos into textured voxel block mosaics and nostalgic pixel art.
 
 *Inspired by the blocky, retro aesthetic of classic voxel sandboxes.*
 
@@ -9,7 +9,7 @@ CraftCam is a zero-configuration, single-page progressive web application (PWA) 
 **Your images never leave your device.** The entire pixelation, block mapping, and color quantization pipeline runs locally in your web browser (using client-side canvas pixels). There is no backend server, and no image data is ever uploaded, stored, or processed externally.
 
 ### 📱 Mobile Experience & Desktop Prompt
-CraftCam is styled to represent a physical handheld toy camera. If accessed via a desktop computer or laptop, the viewfinder screen will display a warning dialog containing a dynamic QR code. Scanning this code lets you instantly open the app on your mobile phone to experience the simulator correctly.
+BitCam is styled to represent a physical handheld toy camera. If accessed via a desktop computer or laptop, the viewfinder screen will display a warning dialog containing a dynamic QR code. Scanning this code lets you instantly open the app on your mobile phone to experience the simulator correctly.
 
 ---
 
@@ -25,7 +25,7 @@ Rather than a modern flat interface, the app is styled as an interactive physica
 
 ## ⚙️ How the Block Art Engine Works
 
-CraftCam processes the loaded image in real-time through a client-side voxelization pipeline:
+BitCam processes the loaded image in real-time through a client-side voxelization pipeline:
 
 ### 1. Grid Partitioning & Color Averaging
 *   The original image is downscaled to fit the camera viewfinder, then divided into discrete grid cell blocks of size `12px`.

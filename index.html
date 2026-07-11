@@ -7,16 +7,16 @@
   <!-- Apple Standalone App Capabilites -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="CraftCam">
+  <meta name="apple-mobile-web-app-title" content="BitCam">
   <link rel="apple-touch-icon" href="icon-192.png">
  
   <!-- PWA Manifest Link -->
   <link rel="manifest" href="manifest.json">
  
-  <title>CraftCam | Retro Voxel Block Pixel Camera</title>
+  <title>BitCam | Retro Voxel Block Pixel Camera</title>
   
   <!-- SEO Meta Tags -->
-  <meta name="description" content="Instantly convert your photos into voxel block art. Auto-maps colors into textured block patterns and 8-bit or 24-bit retro grids.">
+  <meta name="description" content="Instantly convert your photos into voxel block art. Auto-maps colors into textured block patterns and 8-bit or 16-bit retro grids.">
   <meta name="keywords" content="pixel art, voxelizer, block cam, PWA, image converter, frontend app, voxel art">
   <meta name="author" content="Antigravity">
   
@@ -98,7 +98,7 @@
           <div class="pwa-prompt-content">
             <span class="pwa-prompt-icon">⚠️</span>
             <h4 class="pwa-prompt-title">HARDWARE WARNING</h4>
-            <p id="desktop-prompt-text">CraftCam is a mobile handheld camera. Scan to switch to your phone!</p>
+            <p id="desktop-prompt-text">BitCam is a mobile handheld camera. Scan to switch to your phone!</p>
             <div style="background: #fff; padding: 4px; border-radius: 6px; display: inline-block; box-shadow: var(--lcd-hud-glow); border: 2px solid var(--lcd-hud-color); margin-bottom: 4px;">
               <img src="https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=https://SooYM.github.io/VicePoly/" alt="QR Code" style="width: 110px; height: 110px; display: block; image-rendering: pixelated;">
             </div>
@@ -118,12 +118,12 @@
           <!-- Processed Low Poly Canvas (hidden offscreen) -->
           <canvas id="output-canvas" style="display: none;"></canvas>
           <!-- Interactive Image Overlay for mobile long-press save/share -->
-          <img id="output-image" class="output-image" alt="Rendered CraftCam Output" style="display: none;">
+          <img id="output-image" class="output-image" alt="Rendered BitCam Output" style="display: none;">
         </div>
 
         <!-- Style Selector Overlay -->
         <div id="style-selector" class="style-selector" style="display: none;">
-          <button class="btn-style active" data-style="flat-pixel">24 BIT</button>
+          <button class="btn-style active" data-style="flat-pixel">16 BIT</button>
           <button class="btn-style" data-style="survival">8 BIT</button>
         </div>
 

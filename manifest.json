@@ -1,6 +1,6 @@
 {
-  "name": "CraftCam Retro Camera",
-  "short_name": "CraftCam",
+  "name": "BitCam Retro Camera",
+  "short_name": "BitCam",
   "start_url": "index.html",
   "display": "standalone",
   "background_color": "#15151e",

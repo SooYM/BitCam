@@ -314,6 +314,6 @@ const Filters = {
       }
     }
     
-    console.log("[CraftCam Engine] Voxel pixel blocks rendering complete.");
+    console.log("[BitCam Engine] Voxel pixel blocks rendering complete.");
   }
 };
