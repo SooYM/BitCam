@@ -9,12 +9,6 @@ The entire application runs **100% in the frontend** using HTML5 Canvas, Vanilla
 
 ---
 
-## 🕹️ Live Demo
-Host this project on GitHub Pages to access it from any mobile web browser. 
-Once loaded on your mobile phone (iOS Safari or Android Chrome), tap **"Add to Home Screen"** to run it full-screen as a standalone Progressive Web App (PWA).
-
----
-
 ## 🎨 2000s Skeuomorphic UI Design
 Rather than a modern flat interface, the app is styled as an interactive physical cyber-camera gadget:
 - **Device Casing**: Styled with brushed-metal chassis gradients, inner beveled highlights, and a translucent atomic-cyan grip strip.
@@ -90,8 +84,10 @@ Then, open **`http://localhost:8000`** in your browser.
    ```
 4. On GitHub, go to your repository **Settings** -> **Pages**.
 5. Set the Source to **Deploy from a branch**, select `main` (root folder), and click **Save**.
-6. Within a minute, your retro camera will be live at:
-   `https://SooYM.github.io/VicePoly/`
+6. Within a minute, your retro camera will be live at your GitHub Pages link:
+   👉 **[https://SooYM.github.io/VicePoly/](https://SooYM.github.io/VicePoly/)**
+   
+   Once loaded on your mobile phone (iOS Safari or Android Chrome), tap **"Add to Home Screen"** to run it full-screen as a standalone Progressive Web App (PWA).
 
 ---
 
