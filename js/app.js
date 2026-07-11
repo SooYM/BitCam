@@ -272,6 +272,12 @@ const App = {
       // Run the 6th-Gen Console emulation pipeline
       Filters.apply6thGenPipeline(img, canvas);
 
+      // Export canvas buffer as real image to allow native touch-and-hold saves
+      if (this.elements.outputImage) {
+        this.elements.outputImage.src = canvas.toDataURL('image/png');
+        this.elements.outputImage.style.display = 'block';
+      }
+
       this.showLoading(false);
     }, 25);
   },
