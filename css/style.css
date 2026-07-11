@@ -243,6 +243,7 @@ body {
   justify-content: center;
   z-index: 7;
   padding: 16px;
+  cursor: pointer;
 }
 
 .drop-zone.dragover {

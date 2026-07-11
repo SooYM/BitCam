@@ -71,6 +71,9 @@ const App = {
     // CAM button: toggle between camera and upload mode
     el.uploadBtn.addEventListener('click', () => this.toggleCameraMode());
 
+    // Drop zone: tap to upload a photo
+    el.dropZone.addEventListener('click', () => el.fileInput.click());
+
     // Shutter Trigger: Capture snapshot in live mode, refresh in photo mode
     el.shutterTrigger.addEventListener('click', () => {
       if (this.state.cameraActive && !this.state.frozen) {
