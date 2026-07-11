@@ -4,27 +4,6 @@
 const App = {
   state: {
     originalImage: null,
-    points: [],
-    triangles: [],
-    
-    // Baked Retro 3D Camera specifications
-    settings: {
-      detailLevel: 35,
-      edgeWeight: 65,
-      randomness: 25,
-      
-      renderMode: 'textured-retro', 
-      lightingIntensity: 75,        
-      texturePixelation: 5,         
-      colorDepth: 16,               
-      textureJitter: 1.5,           
-      lineWidth: 0.0,               
-      lineColorType: 'none',
-      
-      uiMode: 'direct' // Single direct viewport mode (no split slider)
-    },
-
-    // Dimensions of the current working canvases
     width: 0,
     height: 0
   },
@@ -32,15 +11,7 @@ const App = {
   // DOM Elements
   elements: {},
 
-  // Canvases
-  sourceCanvas: null,
-  sourceCtx: null,
-  textureCanvas: null, // Holds pixelated texture sheet
-
   init: function() {
-    this.sourceCanvas = document.createElement('canvas');
-    this.sourceCtx = this.sourceCanvas.getContext('2d', { willReadFrequently: true });
-    
     this.cacheElements();
     this.bindEvents();
     this.initHUD();
@@ -196,8 +167,6 @@ const App = {
 
   resetCamera: function() {
     this.state.originalImage = null;
-    this.state.points = [];
-    this.state.triangles = [];
     this.state.width = 0;
     this.state.height = 0;
     
@@ -277,6 +246,7 @@ const App = {
     this.showLoading(true);
 
     setTimeout(() => {
+      // Determine optimal display proportions matching the viewport constraints
       const maxDimension = 900;
       let w = img.naturalWidth;
       let h = img.naturalHeight;
@@ -294,205 +264,26 @@ const App = {
       this.state.width = w;
       this.state.height = h;
 
-      // 1. Prepare Offscreen Canvas
-      this.sourceCanvas.width = w;
-      this.sourceCanvas.height = h;
-      this.sourceCtx.drawImage(img, 0, 0, w, h);
-
-      // 2. Match display canvas dimensions
+      // Set display canvas size
       const canvas = this.elements.outputCanvas;
       canvas.width = w;
       canvas.height = h;
 
-      // 3. Extract silhouette edge-aligned points
-      const imgData = this.sourceCtx.getImageData(0, 0, w, h);
-      this.state.points = Sobel.extractPoints(imgData);
+      // Run the 6th-Gen Console emulation pipeline
+      Filters.apply6thGenPipeline(img, canvas);
 
-      // 4. Generate Triangles
-      this.state.triangles = Delaunay.triangulate(this.state.points);
-
-      // 5. Draw everything
-      this.renderTrianglesOnly();
       this.showLoading(false);
     }, 25);
   },
 
-  /**
-   * Precompute a downscaled pixelated texture canvas to map onto the triangles.
-   */
-  prepareTextureCanvas: function() {
-    if (!this.textureCanvas) {
-      this.textureCanvas = document.createElement('canvas');
-    }
-    
-    const w = this.state.width;
-    const h = this.state.height;
-    this.textureCanvas.width = w;
-    this.textureCanvas.height = h;
-    const texCtx = this.textureCanvas.getContext('2d');
-
-    // Disable image smoothing for pixelation (classic retro low-resolution texture look)
-    texCtx.imageSmoothingEnabled = false;
-    texCtx.msImageSmoothingEnabled = false;
-    texCtx.webkitImageSmoothingEnabled = false;
-
-    const pixFactor = this.state.settings.texturePixelation;
-
-    // Downscale texture
-    const scale = 1 / pixFactor;
-    const pw = Math.max(1, Math.round(w * scale));
-    const ph = Math.max(1, Math.round(h * scale));
-
-    const dCanvas = document.createElement('canvas');
-    dCanvas.width = pw;
-    dCanvas.height = ph;
-    dCanvas.getContext('2d').drawImage(this.state.originalImage, 0, 0, pw, ph);
-
-    // Stretch back up to scale, forcing hardware nearest-neighbor pixelation
-    texCtx.drawImage(dCanvas, 0, 0, pw, ph, 0, 0, w, h);
-  },
-
-  /**
-   * Calculates Lambertian diffuse shading multiplier for the triangle based on its normal.
-   */
-  getLightingFactor: function(p1, p2, p3, pixels, w, h, intensity) {
-    const getLum = (p) => {
-      const cx = Math.max(0, Math.min(w - 1, Math.round(p.x)));
-      const cy = Math.max(0, Math.min(h - 1, Math.round(p.y)));
-      const idx = (cy * w + cx) * 4;
-      return 0.299 * pixels[idx] + 0.587 * pixels[idx + 1] + 0.114 * pixels[idx + 2];
-    };
-
-    const l1 = getLum(p1);
-    const l2 = getLum(p2);
-    const l3 = getLum(p3);
-
-    // Height scale: map luminance (0-255) to Z coordinate depth
-    const zScale = 0.35;
-    const z1 = l1 * zScale;
-    const z2 = l2 * zScale;
-    const z3 = l3 * zScale;
-
-    // Vectors in plane of triangle
-    const ux = p2.x - p1.x;
-    const buy = p2.y - p1.y;
-    const uz = z2 - z1;
-
-    const vx = p3.x - p1.x;
-    const vy = p3.y - p1.y;
-    const vz = z3 - z1;
-
-    // Normal vector cross product
-    let nx = buy * vz - uz * vy;
-    let ny = uz * vx - ux * vz;
-    let nz = ux * vy - buy * vx;
-
-    // Normalize
-    const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
-    if (len < 0.0001) return 1.0;
-    nx /= len;
-    ny /= len;
-    nz /= len;
-
-    // Directional light source from top-left (e.g. source vector: -0.485, -0.485, 0.728)
-    const lx = -0.485;
-    const ly = -0.485;
-    const lz = 0.728;
-
-    const dot = nx * lx + ny * ly + nz * lz;
-
-    const factor = 1.0 + dot * (intensity / 100) * 0.55;
-    return Math.min(1.5, Math.max(0.45, factor));
-  },
-
-  // Draw current triangulation model to output canvas
-  renderTrianglesOnly: function() {
-    const canvas = this.elements.outputCanvas;
-    const ctx = canvas.getContext('2d');
-    const w = this.state.width;
-    const h = this.state.height;
-    
-    if (this.state.triangles.length === 0) return;
-
-    this.prepareTextureCanvas();
-
-    // Clear Canvas
-    ctx.clearRect(0, 0, w, h);
-
-    // Read pixel data from source image
-    const sourceImgData = this.sourceCtx.getImageData(0, 0, w, h);
-    const pixels = sourceImgData.data;
-
-    const lightingIntensity = this.state.settings.lightingIntensity;
-    const jitter = this.state.settings.textureJitter;
-
-    // Render triangles loop
-    for (const t of this.state.triangles) {
-      const p1 = t.p1;
-      const p2 = t.p2;
-      const p3 = t.p3;
-
-      // 1. Calculate pseudo-3D lighting shading factor
-      const lightingFactor = this.getLightingFactor(p1, p2, p3, pixels, w, h, lightingIntensity);
-
-      // 2. Texture mapping: clip drawing region to triangle boundary
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(p1.x, p1.y);
-      ctx.lineTo(p2.x, p2.y);
-      ctx.lineTo(p3.x, p3.y);
-      ctx.closePath();
-      ctx.clip();
-
-      // Jitter mapping coordinates to simulate classic wobbly affine texture warping
-      let jx = 0, jy = 0;
-      if (jitter > 0) {
-        jx = (Math.random() - 0.5) * jitter;
-        jy = (Math.random() - 0.5) * jitter;
-      }
-
-      ctx.drawImage(this.textureCanvas, jx, jy);
-      ctx.restore();
-
-      // 3. Apply pseudo-3D lighting shading overlay (highlights/shadows) over the texture
-      if (lightingIntensity > 0 && lightingFactor !== 1.0) {
-        ctx.beginPath();
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
-        ctx.lineTo(p3.x, p3.y);
-        ctx.closePath();
-        
-        if (lightingFactor < 1) {
-          // Shadow overlay (ambient occlusion)
-          const opacity = Math.min(0.72, (1 - lightingFactor) * (lightingIntensity / 100) * 1.15);
-          ctx.fillStyle = `rgba(0, 0, 0, ${opacity})`;
-          ctx.fill();
-        } else {
-          // Highlight overlay
-          const opacity = Math.min(0.6, (lightingFactor - 1) * (lightingIntensity / 100) * 0.95);
-          ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
-          ctx.fill();
-        }
-      }
-    }
-
-    // Apply post process PS2 TV filters (scanlines, grain, volumetric fog, color depth)
-    Filters.applyPS2Pipeline(ctx, w, h);
-
-    // Export canvas buffer as real image element to allow iOS native save/long-press
-    if (this.elements.outputImage) {
-      this.elements.outputImage.src = canvas.toDataURL('image/png');
-      this.elements.outputImage.style.display = 'block';
-    }
-  },
-
   // Export & Download Capabilities
   downloadPNG: function() {
-    if (!this.state.originalImage) return;
+    const img = this.elements.outputImage;
+    if (!img || !img.src) return;
 
     const link = document.createElement('a');
     link.download = `vicepoly_render_${Date.now()}.png`;
-    link.href = this.elements.outputCanvas.toDataURL('image/png');
+    link.href = img.src;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
