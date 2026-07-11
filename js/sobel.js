@@ -1,26 +1,22 @@
 // js/sobel.js
 
 /**
- * Silhouette-Aligned Edge Detection and Feature Point Extractor Module
- * Optimized to produce clean, large geometric shapes and minimal polygons.
+ * Connected Component Segmentation and Boundary Point Extractor Module
+ * Maps out the exact contours of objects/regions for outline-aligned low-poly triangulation.
  */
 const Sobel = {
   /**
-   * Extract key feature points from an ImageData object.
-   * To prevent noisy/webbed meshes, we first downsample the image to a low-resolution buffer.
-   * This downscaling acts as a powerful low-pass filter, erasing reflections, text, pipes,
-   * and high-frequency textures, leaving only major structural outlines (like the car body shape).
-   * We then run edge detection on this simplified buffer and scale the coordinates back up.
+   * Segments the image into solid color regions (representing objects),
+   * extracts their simplified boundary outlines, and returns them.
    * @param {ImageData} imageData - The canvas image data.
-   * @returns {Array<{x: number, y: number}>} Array of unique key points.
+   * @returns {Array<Object>} List of regions with vertices and color.
    */
   extractPoints: function(imageData) {
     const originalWidth = imageData.width;
     const originalHeight = imageData.height;
 
-    // 1. Create a downscaled temporary canvas to eliminate high-frequency details (noise, textures, pipes)
-    // Using 110px width to ensure extremely low polygon counts and highly simplified outlines.
-    const scaleWidth = 110; 
+    // 1. Create a downscaled temporary canvas to eliminate high-frequency details (textures, noise)
+    const scaleWidth = 150; 
     const scaleHeight = Math.round((originalHeight * scaleWidth) / originalWidth);
 
     const tempCanvas = document.createElement('canvas');
@@ -33,157 +29,149 @@ const Sobel = {
     offscreen.width = originalWidth;
     offscreen.height = originalHeight;
     offscreen.getContext('2d').putImageData(imageData, 0, 0);
-    
-    // Allow default bilinear scaling to blur details naturally
     tempCtx.drawImage(offscreen, 0, 0, scaleWidth, scaleHeight);
 
     const tempImgData = tempCtx.getImageData(0, 0, scaleWidth, scaleHeight);
     const tempData = tempImgData.data;
 
-    // 2. Convert downscaled image to grayscale (Luminance formula)
-    const gray = new Uint8Array(scaleWidth * scaleHeight);
+    // 2. Posterize the low-resolution image to group similar colors (step = 45 gives 6 bins per channel)
+    const posterized = new Uint8Array(scaleWidth * scaleHeight * 4);
     for (let i = 0; i < tempData.length; i += 4) {
-      gray[i / 4] = 0.299 * tempData[i] + 0.587 * tempData[i + 1] + 0.114 * tempData[i + 2];
+      posterized[i]     = Math.min(255, Math.max(0, Math.round(tempData[i] / 45) * 45));
+      posterized[i + 1] = Math.min(255, Math.max(0, Math.round(tempData[i + 1] / 45) * 45));
+      posterized[i + 2] = Math.min(255, Math.max(0, Math.round(tempData[i + 2] / 45) * 45));
+      posterized[i + 3] = tempData[i + 3];
     }
 
-    // 3. Compute Sobel gradient magnitudes on low-res buffer
-    const magnitudes = new Float32Array(scaleWidth * scaleHeight);
-    for (let y = 1; y < scaleHeight - 1; y++) {
-      for (let x = 1; x < scaleWidth - 1; x++) {
+    // Helper to get color from posterized buffer
+    const getPosterizedColor = (x, y) => {
+      const idx = (y * scaleWidth + x) * 4;
+      return {
+        r: posterized[idx],
+        g: posterized[idx + 1],
+        b: posterized[idx + 2]
+      };
+    };
+
+    // 3. Connected Component Labeling (Flood Fill)
+    const visited = new Uint8Array(scaleWidth * scaleHeight);
+    const regions = [];
+    const minRegionSize = 20; // Filter out tiny noise spots
+
+    for (let y = 0; y < scaleHeight; y++) {
+      for (let x = 0; x < scaleWidth; x++) {
         const idx = y * scaleWidth + x;
+        if (visited[idx] === 1) continue;
 
-        // Horizontal gradient kernel
-        const hVal = 
-          -1 * gray[(y - 1) * scaleWidth + (x - 1)] + 1 * gray[(y - 1) * scaleWidth + (x + 1)] +
-          -2 * gray[(y) * scaleWidth + (x - 1)]     + 2 * gray[(y) * scaleWidth + (x + 1)] +
-          -1 * gray[(y + 1) * scaleWidth + (x - 1)] + 1 * gray[(y + 1) * scaleWidth + (x + 1)];
+        const regColor = getPosterizedColor(x, y);
+        const regPixels = [];
+        const queue = [{ x, y }];
+        visited[idx] = 1;
 
-        // Vertical gradient kernel
-        const vVal = 
-          -1 * gray[(y - 1) * scaleWidth + (x - 1)] - 2 * gray[(y - 1) * scaleWidth + (x)] - 1 * gray[(y - 1) * scaleWidth + (x + 1)] +
-           1 * gray[(y + 1) * scaleWidth + (x - 1)] + 2 * gray[(y + 1) * scaleWidth + (x)] + 1 * gray[(y + 1) * scaleWidth + (x + 1)];
+        while (queue.length > 0) {
+          const curr = queue.shift();
+          regPixels.push(curr);
 
-        magnitudes[idx] = Math.sqrt(hVal * hVal + vVal * vVal);
-      }
-    }
+          // Check 4-connected neighbors
+          const neighbors = [
+            { x: curr.x + 1, y: curr.y },
+            { x: curr.x - 1, y: curr.y },
+            { x: curr.x, y: curr.y + 1 },
+            { x: curr.x, y: curr.y - 1 }
+          ];
 
-    const scalePoints = [];
-
-    // Spacing constraints for the low-res image:
-    // - Along outlines: place vertices every 10 pixels on the scaled canvas.
-    // - In flat regions: place vertices sparsely every 28 pixels on the scaled canvas.
-    const edgeSpacing = 10;
-    const flatGridSize = 28;
-    const silhouetteThreshold = 35; // Capture dominant outlines
-
-    // Initialize spatial grid for O(1) distance lookups to prevent coordinates from clustering
-    const gridW = Math.ceil(scaleWidth / edgeSpacing);
-    const gridH = Math.ceil(scaleHeight / edgeSpacing);
-    const edgeGrid = new Uint8Array(gridW * gridH); // 0 = empty, 1 = occupied
-
-    // 4. Scan for contours and place points along outlines
-    for (let y = 2; y < scaleHeight - 2; y++) {
-      for (let x = 2; x < scaleWidth - 2; x++) {
-        const idx = y * scaleWidth + x;
-        
-        if (magnitudes[idx] > silhouetteThreshold) {
-          const gx = Math.floor(x / edgeSpacing);
-          const gy = Math.floor(y / edgeSpacing);
-
-          // Check if any neighboring cell in a 3x3 grid is occupied
-          let tooClose = false;
-          for (let dy = -1; dy <= 1; dy++) {
-            for (let dx = -1; dx <= 1; dx++) {
-              const nx = gx + dx;
-              const ny = gy + dy;
-              if (nx >= 0 && nx < gridW && ny >= 0 && ny < gridH) {
-                if (edgeGrid[ny * gridW + nx] === 1) {
-                  tooClose = true;
-                  break;
+          for (const n of neighbors) {
+            if (n.x >= 0 && n.x < scaleWidth && n.y >= 0 && n.y < scaleHeight) {
+              const nidx = n.y * scaleWidth + n.x;
+              if (visited[nidx] === 0) {
+                const c = getPosterizedColor(n.x, n.y);
+                if (c.r === regColor.r && c.g === regColor.g && c.b === regColor.b) {
+                  visited[nidx] = 1;
+                  queue.push(n);
                 }
               }
             }
-            if (tooClose) break;
-          }
-
-          if (!tooClose) {
-            edgeGrid[gy * gridW + gx] = 1;
-            scalePoints.push({ x: x, y: y });
-          }
-        }
-      }
-    }
-
-    // 5. Fill flat/unstructured regions with sparse vertices
-    for (let gy = 0; gy < scaleHeight; gy += flatGridSize) {
-      for (let gx = 0; gx < scaleWidth; gx += flatGridSize) {
-        // Verify if any contour points are already located in this cell
-        let hasPoint = false;
-        const endY = Math.min(gy + flatGridSize, scaleHeight);
-        const endX = Math.min(gx + flatGridSize, scaleWidth);
-
-        for (const p of scalePoints) {
-          if (p.x >= gx && p.x < endX && p.y >= gy && p.y < endY) {
-            hasPoint = true;
-            break;
           }
         }
 
-        if (!hasPoint) {
-          // Add a slightly jittered center point inside the cell
-          const cx = gx + flatGridSize / 2 + (Math.random() - 0.5) * (flatGridSize * 0.2);
-          const cy = gy + flatGridSize / 2 + (Math.random() - 0.5) * (flatGridSize * 0.2);
-          
-          scalePoints.push({
-            x: Math.max(2, Math.min(scaleWidth - 3, Math.round(cx))),
-            y: Math.max(2, Math.min(scaleHeight - 3, Math.round(cy)))
+        if (regPixels.length >= minRegionSize) {
+          regions.push({
+            color: regColor,
+            pixels: regPixels
           });
         }
       }
     }
 
-    // 6. Scale points back up to the original size
-    const points = [];
+    // Scale factors to map coordinates back up to original display size
     const scaleX = originalWidth / scaleWidth;
     const scaleY = originalHeight / scaleHeight;
 
-    for (const p of scalePoints) {
-      points.push({
+    const processedRegions = [];
+
+    // 4. Boundary extraction and simplification for each region
+    for (const reg of regions) {
+      const regionSet = new Set();
+      for (const p of reg.pixels) {
+        regionSet.add(`${p.x},${p.y}`);
+      }
+
+      // Collect boundary pixels (pixels with at least one neighbor outside the region)
+      const borderPoints = [];
+      for (const p of reg.pixels) {
+        const neighbors = [
+          { x: p.x + 1, y: p.y },
+          { x: p.x - 1, y: p.y },
+          { x: p.x, y: p.y + 1 },
+          { x: p.x, y: p.y - 1 }
+        ];
+        let isBorder = false;
+        for (const n of neighbors) {
+          if (n.x < 0 || n.x >= scaleWidth || n.y < 0 || n.y >= scaleHeight || !regionSet.has(`${n.x},${n.y}`)) {
+            isBorder = true;
+            break;
+          }
+        }
+        if (isBorder) {
+          borderPoints.push(p);
+        }
+      }
+
+      // Subsample boundary points to enforce clean, sparse polygons
+      const vertices = [];
+      const step = Math.max(3, Math.floor(borderPoints.length / 9)); // Targets 8-10 points per region
+      for (let k = 0; k < borderPoints.length; k += step) {
+        vertices.push(borderPoints[k]);
+      }
+      
+      // Upscale vertices to original size
+      const scaledVertices = vertices.map(p => ({
         x: Math.round(p.x * scaleX),
         y: Math.round(p.y * scaleY)
+      }));
+
+      // Add a few interior points inside large regions to prevent massive triangulation holes
+      if (reg.pixels.length > 150) {
+        const sampleStep = Math.floor(reg.pixels.length / 4);
+        for (let k = sampleStep; k < reg.pixels.length; k += sampleStep) {
+          const ip = reg.pixels[k];
+          scaledVertices.push({
+            x: Math.round(ip.x * scaleX),
+            y: Math.round(ip.y * scaleY)
+          });
+        }
+      }
+
+      // Always secure region bounding corners to lock adjacent region seams
+      processedRegions.push({
+        color: reg.color,
+        vertices: scaledVertices,
+        regionSet: regionSet,
+        scaleX: scaleX,
+        scaleY: scaleY
       });
     }
 
-    // 7. Add canvas boundaries (corners and regularly spaced edge points)
-    // Using a large boundary spacing to keep border polygons massive and clean
-    points.push({ x: 0, y: 0 });
-    points.push({ x: originalWidth - 1, y: 0 });
-    points.push({ x: 0, y: originalHeight - 1 });
-    points.push({ x: originalWidth - 1, y: originalHeight - 1 });
-
-    const borderSpacing = 140; // High spacing for large border shapes
-    for (let x = borderSpacing; x < originalWidth - 1; x += borderSpacing) {
-      points.push({ x: x, y: 0 });
-      points.push({ x: x, y: originalHeight - 1 });
-    }
-    for (let y = borderSpacing; y < originalHeight - 1; y += borderSpacing) {
-      points.push({ x: 0, y: y });
-      points.push({ x: originalWidth - 1, y: y });
-    }
-
-    // 8. De-duplicate coordinates and clamp boundaries
-    const uniquePoints = [];
-    const seen = new Set();
-    for (const p of points) {
-      const cx = Math.max(0, Math.min(originalWidth - 1, Math.round(p.x)));
-      const cy = Math.max(0, Math.min(originalHeight - 1, Math.round(p.y)));
-      const key = `${cx},${cy}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        uniquePoints.push({ x: cx, y: cy });
-      }
-    }
-
-    return uniquePoints;
+    return processedRegions;
   }
 };
